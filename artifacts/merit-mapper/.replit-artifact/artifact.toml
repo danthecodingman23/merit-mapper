@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "MeritMapper"
+version = "1.0.0"
+id = "artifacts/merit-mapper"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25448
+
+[services.development]
+run = "pnpm --filter @workspace/merit-mapper run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/merit-mapper", "run", "build" ]
+publicDir = "artifacts/merit-mapper/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25448"
+BASE_PATH = "/"
