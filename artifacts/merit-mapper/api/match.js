@@ -29,26 +29,19 @@ const MATCH_TOOL = {
   },
 };
 
-export default async function handler(req) {
+export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return Response.json({ error: "Method not allowed" }, { status: 405 });
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
-  let body;
-  try {
-    body = await req.json();
-  } catch {
-    return Response.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
-
-  const { profile, scholarships } = body;
+  const { profile, scholarships } = req.body;
 
   if (!profile || !scholarships || !Array.isArray(scholarships)) {
-    return Response.json({ error: "profile and scholarships array are required" }, { status: 400 });
+    return res.status(400).json({ error: "profile and scholarships array are required" });
   }
 
   if (scholarships.length === 0) {
-    return Response.json({ results: [] });
+    return res.status(200).json({ results: [] });
   }
 
   const systemPrompt = `You are a scholarship matching engine. Evaluate how well the student fits each scholarship.
@@ -82,17 +75,15 @@ Call the return_match_results tool with one entry per scholarship.`;
     const toolBlock = message.content.find((b) => b.type === "tool_use");
 
     if (!toolBlock) {
-      return Response.json({ error: "Matching engine did not return structured results" }, { status: 502 });
+      return res.status(502).json({ error: "Matching engine did not return structured results" });
     }
 
     const { results } = toolBlock.input;
     results.sort((a, b) => b.match_score - a.match_score);
 
-    return Response.json({ results });
+    return res.status(200).json({ results });
   } catch (err) {
     console.error("Anthropic API error:", err);
-    return Response.json({ error: "Failed to contact matching engine" }, { status: 500 });
+    return res.status(500).json({ error: "Failed to contact matching engine" });
   }
 }
-
-export const config = { runtime: "edge" };
