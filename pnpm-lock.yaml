@@ -225,6 +225,9 @@ importers:
 
   artifacts/merit-mapper:
     dependencies:
+      '@anthropic-ai/sdk':
+        specifier: ^0.100.1
+        version: 0.100.1(zod@3.25.76)
       '@supabase/supabase-js':
         specifier: ^2.106.2
         version: 2.106.2
