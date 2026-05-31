@@ -2,12 +2,12 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const MATCH_TOOL: Anthropic.Tool = {
+const MATCH_TOOL = {
   name: "return_match_results",
   description:
     "Return the scored scholarship match results for the given student profile. Call this tool exactly once with all results.",
   input_schema: {
-    type: "object" as const,
+    type: "object",
     properties: {
       results: {
         type: "array",
@@ -29,12 +29,12 @@ const MATCH_TOOL: Anthropic.Tool = {
   },
 };
 
-export default async function handler(req: Request): Promise<Response> {
+export default async function handler(req) {
   if (req.method !== "POST") {
     return Response.json({ error: "Method not allowed" }, { status: 405 });
   }
 
-  let body: { profile: unknown; scholarships: unknown };
+  let body;
   try {
     body = await req.json();
   } catch {
@@ -47,7 +47,7 @@ export default async function handler(req: Request): Promise<Response> {
     return Response.json({ error: "profile and scholarships array are required" }, { status: 400 });
   }
 
-  if ((scholarships as unknown[]).length === 0) {
+  if (scholarships.length === 0) {
     return Response.json({ results: [] });
   }
 
@@ -79,16 +79,14 @@ Call the return_match_results tool with one entry per scholarship.`;
       messages: [{ role: "user", content: userMessage }],
     });
 
-    const toolBlock = message.content.find(
-      (b): b is Anthropic.ToolUseBlock => b.type === "tool_use",
-    );
+    const toolBlock = message.content.find((b) => b.type === "tool_use");
 
     if (!toolBlock) {
       return Response.json({ error: "Matching engine did not return structured results" }, { status: 502 });
     }
 
-    const { results } = toolBlock.input as { results: unknown[] };
-    (results as { match_score: number }[]).sort((a, b) => b.match_score - a.match_score);
+    const { results } = toolBlock.input;
+    results.sort((a, b) => b.match_score - a.match_score);
 
     return Response.json({ results });
   } catch (err) {
