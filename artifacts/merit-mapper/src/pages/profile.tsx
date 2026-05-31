@@ -1,5 +1,7 @@
 import { useState, FormEvent } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import { useMatch, type MatchResult, type RankedScholarship } from "@/context/MatchContext";
+import { SCHOLARSHIPS } from "@/data/scholarships";
 
 interface ProfileForm {
   fullName: string;
@@ -10,23 +12,6 @@ interface ProfileForm {
   extracurriculars: string;
   skillsAndInterests: string;
   financialNeed: "low" | "medium" | "high" | "";
-}
-
-interface MatchResult {
-  id: string;
-  match_score: number;
-  matched_criteria: string[];
-  missing_criteria: string[];
-  deadline_urgency: "low" | "medium" | "high";
-}
-
-interface RankedScholarship {
-  id: string;
-  name: string;
-  description?: string;
-  amount?: number;
-  deadline?: string;
-  result: MatchResult;
 }
 
 const INITIAL: ProfileForm = {
@@ -51,72 +36,12 @@ const US_STATES = [
   "Virginia","Washington","West Virginia","Wisconsin","Wyoming",
 ];
 
-// Placeholder scholarships until the Supabase table is populated
-const PLACEHOLDER_SCHOLARSHIPS = [
-  {
-    id: "s1",
-    name: "National Merit Scholarship",
-    description: "Awarded to students with outstanding academic achievement.",
-    amount: 2500,
-    deadline: "2026-10-01",
-    requirements: "High GPA, strong test scores, academic excellence",
-    min_gpa: 3.8,
-  },
-  {
-    id: "s2",
-    name: "Community Leadership Award",
-    description: "For students who demonstrate exceptional community involvement and leadership.",
-    amount: 5000,
-    deadline: "2026-09-15",
-    requirements: "Community service, leadership roles, extracurricular involvement",
-  },
-  {
-    id: "s3",
-    name: "STEM Future Scholars Grant",
-    description: "Supporting the next generation of scientists and engineers.",
-    amount: 10000,
-    deadline: "2026-11-30",
-    requirements: "STEM major, strong GPA, interest in research",
-    field_of_study: "STEM",
-    min_gpa: 3.5,
-  },
-  {
-    id: "s4",
-    name: "First-Generation College Student Fund",
-    description: "Helping first-generation college students achieve their dreams.",
-    amount: 7500,
-    deadline: "2026-08-01",
-    requirements: "First-generation college student, financial need",
-    eligibility: "First-generation college student",
-  },
-  {
-    id: "s5",
-    name: "Arts & Humanities Excellence Award",
-    description: "Recognizing creative talent in arts, music, writing, and humanities.",
-    amount: 3000,
-    deadline: "2026-12-15",
-    requirements: "Arts or humanities focus, creative portfolio",
-    field_of_study: "Arts, Humanities",
-  },
-];
-
-const URGENCY_COLORS = {
-  high: "bg-red-50 text-red-700 border-red-200",
-  medium: "bg-amber-50 text-amber-700 border-amber-200",
-  low: "bg-green-50 text-green-700 border-green-200",
-};
-
-const SCORE_COLOR = (score: number) => {
-  if (score >= 70) return "text-green-600";
-  if (score >= 50) return "text-amber-600";
-  return "text-red-500";
-};
-
 export default function Profile() {
   const [form, setForm] = useState<ProfileForm>(INITIAL);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [ranked, setRanked] = useState<RankedScholarship[] | null>(null);
+  const { setRanked } = useMatch();
+  const [, navigate] = useLocation();
 
   function set(field: keyof ProfileForm, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -126,7 +51,6 @@ export default function Profile() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    setRanked(null);
 
     const profile = {
       fullName: form.fullName,
@@ -139,16 +63,11 @@ export default function Profile() {
       financialNeed: form.financialNeed as "low" | "medium" | "high",
     };
 
-    console.log("Submitting profile:", profile);
-
     try {
-      // TODO: replace PLACEHOLDER_SCHOLARSHIPS with Supabase fetch once table is populated
-      const scholarships = PLACEHOLDER_SCHOLARSHIPS;
-
       const res = await fetch("/api/match", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile, scholarships }),
+        body: JSON.stringify({ profile, scholarships: SCHOLARSHIPS }),
       });
 
       if (!res.ok) {
@@ -158,14 +77,15 @@ export default function Profile() {
 
       const { results }: { results: MatchResult[] } = await res.json();
 
-      // Merge results back with scholarship metadata
+      // Merge API results with full scholarship metadata
       const resultMap = new Map(results.map((r) => [r.id, r]));
-      const merged: RankedScholarship[] = scholarships
+      const merged: RankedScholarship[] = SCHOLARSHIPS
         .filter((s) => resultMap.has(s.id))
         .map((s) => ({ ...s, result: resultMap.get(s.id)! }))
         .sort((a, b) => b.result.match_score - a.result.match_score);
 
       setRanked(merged);
+      navigate("/results");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -323,74 +243,6 @@ export default function Profile() {
             )}
           </button>
         </form>
-
-        {ranked && (
-          <div className="mt-10 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-[#1a1a2e]">Your matches</h2>
-              <span className="text-sm text-[#64748b]">{ranked.length} scholarships ranked</span>
-            </div>
-
-            {ranked.map((s) => (
-              <div key={s.id} className="bg-white rounded-2xl border border-[#e2e8f0] shadow-sm p-5">
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div>
-                    <h3 className="font-semibold text-[#1a1a2e] leading-tight">{s.name}</h3>
-                    {s.amount && (
-                      <p className="text-sm text-[#2563eb] font-medium mt-0.5">
-                        ${s.amount.toLocaleString()} award
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex-shrink-0 text-right">
-                    <div className={`text-2xl font-bold ${SCORE_COLOR(s.result.match_score)}`}>
-                      {s.result.match_score}
-                    </div>
-                    <div className="text-xs text-[#94a3b8]">/ 100</div>
-                  </div>
-                </div>
-
-                {s.description && (
-                  <p className="text-sm text-[#64748b] mb-3">{s.description}</p>
-                )}
-
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {s.deadline && (
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full border ${URGENCY_COLORS[s.result.deadline_urgency]}`}>
-                      Due {new Date(s.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                    </span>
-                  )}
-                </div>
-
-                {s.result.matched_criteria.length > 0 && (
-                  <div className="mb-2">
-                    <p className="text-xs font-medium text-[#475569] mb-1.5">Why you match</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {s.result.matched_criteria.map((c) => (
-                        <span key={c} className="text-xs bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full">
-                          ✓ {c}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {s.result.missing_criteria.length > 0 && (
-                  <div className="mt-2">
-                    <p className="text-xs font-medium text-[#475569] mb-1.5">Gaps to be aware of</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {s.result.missing_criteria.map((c) => (
-                        <span key={c} className="text-xs bg-[#fef9ec] text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">
-                          △ {c}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );

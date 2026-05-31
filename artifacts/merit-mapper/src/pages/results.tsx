@@ -1,0 +1,247 @@
+import { Link } from "wouter";
+import { useMatch, type RankedScholarship } from "@/context/MatchContext";
+
+function scoreBadge(score: number) {
+  if (score >= 80)
+    return { bg: "bg-green-100 text-green-800 border-green-200", label: "Strong match" };
+  if (score >= 50)
+    return { bg: "bg-amber-100 text-amber-800 border-amber-200", label: "Moderate match" };
+  return { bg: "bg-slate-100 text-slate-600 border-slate-200", label: "Weak match" };
+}
+
+const URGENCY: Record<string, { chip: string; label: string }> = {
+  high: { chip: "bg-red-50 text-red-700 border-red-200", label: "Deadline soon" },
+  medium: { chip: "bg-amber-50 text-amber-700 border-amber-200", label: "Coming up" },
+  low: { chip: "bg-green-50 text-green-700 border-green-200", label: "Plenty of time" },
+};
+
+function ScoreRing({ score }: { score: number }) {
+  const r = 22;
+  const circ = 2 * Math.PI * r;
+  const dash = (score / 100) * circ;
+  const color = score >= 80 ? "#16a34a" : score >= 50 ? "#d97706" : "#94a3b8";
+
+  return (
+    <div className="relative w-14 h-14 flex-shrink-0">
+      <svg viewBox="0 0 56 56" className="w-full h-full -rotate-90">
+        <circle cx="28" cy="28" r={r} fill="none" stroke="#e2e8f0" strokeWidth="5" />
+        <circle
+          cx="28" cy="28" r={r} fill="none"
+          stroke={color} strokeWidth="5"
+          strokeDasharray={`${dash} ${circ}`}
+          strokeLinecap="round"
+        />
+      </svg>
+      <span
+        className="absolute inset-0 flex items-center justify-center text-sm font-bold"
+        style={{ color }}
+      >
+        {score}
+      </span>
+    </div>
+  );
+}
+
+function ScholarshipCard({ s }: { s: RankedScholarship }) {
+  const badge = scoreBadge(s.result.match_score);
+  const urgency = URGENCY[s.result.deadline_urgency];
+
+  return (
+    <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-sm overflow-hidden">
+      {/* Header */}
+      <div className="p-5 pb-4 flex items-start gap-4">
+        <ScoreRing score={s.result.match_score} />
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-0.5">
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${badge.bg}`}>
+              {badge.label}
+            </span>
+            {s.result.deadline_urgency === "high" && (
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${urgency.chip}`}>
+                ⚠ {urgency.label}
+              </span>
+            )}
+          </div>
+          <h3 className="font-semibold text-[#1a1a2e] leading-tight mt-1">{s.name}</h3>
+          <p className="text-xs text-[#64748b] mt-0.5">{s.provider}</p>
+        </div>
+      </div>
+
+      {/* Meta row */}
+      <div className="px-5 pb-4 flex flex-wrap gap-3">
+        {s.amount != null && (
+          <div className="flex items-center gap-1.5 text-sm">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <circle cx="7" cy="7" r="6" stroke="#2563eb" strokeWidth="1.4"/>
+              <path d="M7 4v6M5.5 8.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5S8.33 7 7 7 5.5 6.33 5.5 5.5 6.17 4 7 4s1.5.67 1.5 1.5" stroke="#2563eb" strokeWidth="1.2" strokeLinecap="round"/>
+            </svg>
+            <span className="font-semibold text-[#1a1a2e]">${s.amount.toLocaleString()}</span>
+          </div>
+        )}
+        {s.deadline && (
+          <div className="flex items-center gap-1.5 text-sm">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <rect x="1" y="2" width="12" height="11" rx="2" stroke="#64748b" strokeWidth="1.4"/>
+              <path d="M1 6h12M4 1v2M10 1v2" stroke="#64748b" strokeWidth="1.4" strokeLinecap="round"/>
+            </svg>
+            <span className="text-[#475569]">
+              {new Date(s.deadline).toLocaleDateString("en-US", {
+                month: "short", day: "numeric", year: "numeric",
+              })}
+            </span>
+            {s.result.deadline_urgency !== "high" && (
+              <span className={`text-xs px-1.5 py-0.5 rounded-full border ${urgency.chip}`}>
+                {urgency.label}
+              </span>
+            )}
+          </div>
+        )}
+        {s.field_of_study && (
+          <div className="flex items-center gap-1.5 text-sm text-[#475569]">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M7 1L13 4.5v4L7 12 1 8.5v-4L7 1z" stroke="#64748b" strokeWidth="1.4" strokeLinejoin="round"/>
+            </svg>
+            {s.field_of_study}
+          </div>
+        )}
+      </div>
+
+      {s.description && (
+        <p className="px-5 pb-4 text-sm text-[#64748b] leading-relaxed">{s.description}</p>
+      )}
+
+      <div className="px-5 pb-5 space-y-3">
+        {s.result.matched_criteria.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-1.5">
+              Why you match
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {s.result.matched_criteria.map((c) => (
+                <span key={c} className="text-xs bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <path d="M2 5l2.5 2.5L8 3" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  {c}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {s.result.missing_criteria.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-1.5">
+              Gaps to be aware of
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {s.result.missing_criteria.map((c) => (
+                <span key={c} className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <path d="M5 3v2.5M5 7.5v.1" stroke="#d97706" strokeWidth="1.5" strokeLinecap="round"/>
+                    <path d="M5 1L9 8H1L5 1z" stroke="#d97706" strokeWidth="1.2" strokeLinejoin="round"/>
+                  </svg>
+                  {c}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="px-5 py-3.5 border-t border-[#f1f5f9] flex items-center justify-between gap-3">
+        {s.application_url ? (
+          <a
+            href={s.application_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all duration-150 shadow-sm hover:shadow"
+          >
+            Apply now
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M2 10L10 2M10 2H5M10 2v5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </a>
+        ) : (
+          <span className="text-xs text-[#94a3b8]">No application link available</span>
+        )}
+        {s.amount != null && (
+          <span className="text-xs text-[#94a3b8]">Up to ${s.amount.toLocaleString()}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function Results() {
+  const { ranked } = useMatch();
+
+  const strong = ranked.filter((s) => s.result.match_score >= 80);
+  const moderate = ranked.filter((s) => s.result.match_score >= 50 && s.result.match_score < 80);
+  const weak = ranked.filter((s) => s.result.match_score < 50);
+
+  return (
+    <div className="min-h-screen bg-[#f8f7f4] py-10 px-4">
+      <div className="max-w-2xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <Link href="/profile">
+            <button className="text-sm font-medium text-[#2563eb] hover:text-[#1d4ed8] transition-colors flex items-center gap-1.5">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M11 7H3M3 7L7 3M3 7L7 11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Edit profile
+            </button>
+          </Link>
+          <h1 className="text-2xl font-bold text-[#1a1a2e] mt-4 mb-1">Your scholarship matches</h1>
+          <p className="text-sm text-[#64748b]">
+            {ranked.length === 0
+              ? "No results yet — go back and submit your profile."
+              : `${ranked.length} scholarship${ranked.length !== 1 ? "s" : ""} ranked by fit`}
+          </p>
+
+          {ranked.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-3">
+              {strong.length > 0 && (
+                <div className="flex items-center gap-1.5 text-sm">
+                  <span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" />
+                  <span className="text-[#475569]">{strong.length} strong</span>
+                </div>
+              )}
+              {moderate.length > 0 && (
+                <div className="flex items-center gap-1.5 text-sm">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block" />
+                  <span className="text-[#475569]">{moderate.length} moderate</span>
+                </div>
+              )}
+              {weak.length > 0 && (
+                <div className="flex items-center gap-1.5 text-sm">
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-300 inline-block" />
+                  <span className="text-[#475569]">{weak.length} weak</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {ranked.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-sm p-10 text-center">
+            <p className="text-[#64748b] mb-4">Submit your profile to see your matches here.</p>
+            <Link href="/profile">
+              <button className="inline-flex items-center gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-all">
+                Build my profile
+              </button>
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {ranked.map((s) => (
+              <ScholarshipCard key={s.id} s={s} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
