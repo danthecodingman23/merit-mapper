@@ -2,6 +2,27 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+const MAX_SCHOLARSHIPS = 12;
+
+/**
+ * Quick rule-based pre-filter to cut the list before hitting Claude.
+ * Keeps the prompt small and the call under Vercel Hobby's 10-second limit.
+ */
+function preFilter(scholarships, profile) {
+  const gpa = parseFloat(profile.gpa) || 0;
+  const state = (profile.homeState || "").toLowerCase();
+
+  return scholarships
+    .filter((s) => {
+      // Drop if student GPA is below the hard minimum
+      if (s.min_gpa != null && gpa < s.min_gpa) return false;
+      // Drop state-restricted scholarships that don't match
+      if (s.state_specific && !s.state_specific.toLowerCase().includes(state)) return false;
+      return true;
+    })
+    .slice(0, MAX_SCHOLARSHIPS);
+}
+
 const MATCH_TOOL = {
   name: "return_match_results",
   description:
@@ -29,6 +50,17 @@ const MATCH_TOOL = {
   },
 };
 
+const SYSTEM_PROMPT = `You are a scholarship matching engine. Score how well the student fits each scholarship.
+
+Scoring:
+- 90–100: Excellent match — clearly qualifies, highly competitive
+- 70–89: Good match — meets most criteria, minor gaps
+- 50–69: Moderate match — some criteria met, notable gaps
+- 30–49: Weak match — few criteria met
+- 0–29: Poor match — unlikely to qualify
+
+Call return_match_results with one entry per scholarship. Be concise.`;
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -44,29 +76,21 @@ export default async function handler(req, res) {
     return res.status(200).json({ results: [] });
   }
 
-  const systemPrompt = `You are a scholarship matching engine. Evaluate how well the student fits each scholarship.
+  const filtered = preFilter(scholarships, profile);
 
-For each scholarship consider:
-1. Eligibility alignment — GPA requirements, state restrictions, field of study, financial need
-2. Background alignment — extracurriculars, skills, and interests vs. scholarship focus
-3. Competitive likelihood — how strong the student looks relative to typical applicants
+  if (filtered.length === 0) {
+    return res.status(200).json({ results: [] });
+  }
 
-Scoring:
-- 90–100: Excellent match, student clearly qualifies and is highly competitive
-- 70–89: Good match, meets most criteria with minor gaps
-- 50–69: Moderate match, some criteria met but notable gaps
-- 30–49: Weak match, few criteria met
-- 0–29: Poor match, unlikely to qualify
-
-Call the return_match_results tool with one entry per scholarship.`;
-
-  const userMessage = `Student profile:\n${JSON.stringify(profile, null, 2)}\n\nScholarships:\n${JSON.stringify(scholarships, null, 2)}`;
+  const userMessage =
+    `Student profile:\n${JSON.stringify(profile, null, 2)}\n\n` +
+    `Scholarships (${filtered.length}):\n${JSON.stringify(filtered, null, 2)}`;
 
   try {
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 4096,
-      system: systemPrompt,
+      system: SYSTEM_PROMPT,
       tools: [MATCH_TOOL],
       tool_choice: { type: "tool", name: "return_match_results" },
       messages: [{ role: "user", content: userMessage }],

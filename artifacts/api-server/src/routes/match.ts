@@ -4,6 +4,21 @@ import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
+const MAX_SCHOLARSHIPS = 12;
+
+function preFilter(scholarships: Scholarship[], profile: StudentProfile): Scholarship[] {
+  const gpa = profile.gpa ?? 0;
+  const state = (profile.homeState ?? "").toLowerCase();
+
+  return scholarships
+    .filter((s) => {
+      if (s.min_gpa != null && gpa < s.min_gpa) return false;
+      if (s.state_specific && !s.state_specific.toLowerCase().includes(state)) return false;
+      return true;
+    })
+    .slice(0, MAX_SCHOLARSHIPS);
+}
+
 const apiKey = process.env["ANTHROPIC_API_KEY"];
 if (!apiKey) {
   throw new Error("ANTHROPIC_API_KEY environment variable is required");
@@ -119,23 +134,24 @@ router.post("/match", async (req, res) => {
     return;
   }
 
-  const systemPrompt = `You are a scholarship matching engine. Evaluate how well the student fits each scholarship.
+  const filtered = preFilter(scholarships, profile);
+  if (filtered.length === 0) {
+    res.json({ results: [] });
+    return;
+  }
 
-For each scholarship consider:
-1. Eligibility alignment — GPA requirements, state restrictions, field of study, financial need
-2. Background alignment — extracurriculars, skills, and interests vs. scholarship focus
-3. Competitive likelihood — how strong the student looks relative to typical applicants
+  const systemPrompt = `You are a scholarship matching engine. Score how well the student fits each scholarship.
 
 Scoring:
-- 90–100: Excellent match, student clearly qualifies and is highly competitive
-- 70–89: Good match, meets most criteria with minor gaps
-- 50–69: Moderate match, some criteria met but notable gaps
-- 30–49: Weak match, few criteria met
-- 0–29: Poor match, unlikely to qualify
+- 90–100: Excellent match — clearly qualifies, highly competitive
+- 70–89: Good match — meets most criteria, minor gaps
+- 50–69: Moderate match — some criteria met, notable gaps
+- 30–49: Weak match — few criteria met
+- 0–29: Poor match — unlikely to qualify
 
-Call the return_match_results tool with one entry per scholarship.`;
+Call the return_match_results tool with one entry per scholarship. Be concise.`;
 
-  const userMessage = `Student profile:\n${JSON.stringify(profile, null, 2)}\n\nScholarships:\n${JSON.stringify(scholarships, null, 2)}`;
+  const userMessage = `Student profile:\n${JSON.stringify(profile, null, 2)}\n\nScholarships (${filtered.length}):\n${JSON.stringify(filtered, null, 2)}`;
 
   try {
     const message = await anthropic.messages.create({
