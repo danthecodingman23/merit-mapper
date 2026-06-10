@@ -13,7 +13,7 @@ export default function Landing() {
           </div>
           <span className="font-semibold text-[#1a1a2e] tracking-tight text-[15px]">MeritMapper</span>
         </div>
-        <Link href="/profile">
+        <Link href="/login">
           <button className="text-sm font-medium text-[#2563eb] hover:text-[#1d4ed8] transition-colors">
             Sign in
           </button>
