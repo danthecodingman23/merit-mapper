@@ -1,7 +1,7 @@
 import { useState, FormEvent } from "react";
 import { Link, useLocation } from "wouter";
 import { useMatch, type MatchResult, type RankedScholarship } from "@/context/MatchContext";
-import { SCHOLARSHIPS } from "@/data/scholarships";
+import { useScholarships } from "@/hooks/useScholarships";
 
 interface ProfileForm {
   fullName: string;
@@ -42,6 +42,7 @@ export default function Profile() {
   const [error, setError] = useState<string | null>(null);
   const { setRanked } = useMatch();
   const [, navigate] = useLocation();
+  const { scholarships, loading: scholarshipsLoading, error: scholarshipsError } = useScholarships();
 
   function set(field: keyof ProfileForm, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -67,7 +68,7 @@ export default function Profile() {
       const res = await fetch("/api/match", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile, scholarships: SCHOLARSHIPS }),
+        body: JSON.stringify({ profile, scholarships }),
       });
 
       if (!res.ok) {
@@ -79,7 +80,7 @@ export default function Profile() {
 
       // Merge API results with full scholarship metadata
       const resultMap = new Map(results.map((r) => [r.id, r]));
-      const merged: RankedScholarship[] = SCHOLARSHIPS
+      const merged: RankedScholarship[] = scholarships
         .filter((s) => resultMap.has(s.id))
         .map((s) => ({ ...s, result: resultMap.get(s.id)! }))
         .sort((a, b) => b.result.match_score - a.result.match_score);
@@ -219,6 +220,12 @@ export default function Profile() {
             </Field>
           </div>
 
+          {scholarshipsError && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">
+              Could not load scholarships from database: {scholarshipsError}. Please refresh and try again.
+            </div>
+          )}
+
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
               {error}
@@ -227,10 +234,18 @@ export default function Profile() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || scholarshipsLoading || scholarships.length === 0}
             className="w-full bg-[#2563eb] hover:bg-[#1d4ed8] active:bg-[#1e40af] disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-xl text-base transition-all duration-150 shadow-sm hover:shadow-md flex items-center justify-center gap-2"
           >
-            {loading ? (
+            {scholarshipsLoading ? (
+              <>
+                <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+                Loading scholarships…
+              </>
+            ) : loading ? (
               <>
                 <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24" fill="none">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
