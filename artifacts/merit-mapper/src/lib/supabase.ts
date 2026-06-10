@@ -1,13 +1,27 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+let _client: SupabaseClient | null = null;
 
-if (!supabaseUrl) {
-  throw new Error("Missing env: VITE_SUPABASE_URL");
+export function getSupabaseClient(): SupabaseClient {
+  if (_client) return _client;
+
+  const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+  const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+
+  if (!url || !key) {
+    throw new Error(
+      "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.",
+    );
+  }
+
+  _client = createClient(url, key);
+  return _client;
 }
-if (!supabaseAnonKey) {
-  throw new Error("Missing env: VITE_SUPABASE_ANON_KEY");
-}
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Proxy so callers can write `supabase.auth.signIn(...)` as before.
+// The real client is only created on first property access.
+export const supabase = new Proxy({} as SupabaseClient, {
+  get(_target, prop) {
+    return (getSupabaseClient() as unknown as Record<string | symbol, unknown>)[prop];
+  },
+});
