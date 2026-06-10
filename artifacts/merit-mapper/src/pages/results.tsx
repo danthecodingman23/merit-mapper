@@ -96,19 +96,15 @@ function ScholarshipCard({ s }: { s: RankedScholarship }) {
             )}
           </div>
         )}
-        {s.field_of_study && (
+        {s.category_tags && s.category_tags.length > 0 && (
           <div className="flex items-center gap-1.5 text-sm text-[#475569]">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M7 1L13 4.5v4L7 12 1 8.5v-4L7 1z" stroke="#64748b" strokeWidth="1.4" strokeLinejoin="round"/>
             </svg>
-            {s.field_of_study}
+            {s.category_tags.join(", ")}
           </div>
         )}
       </div>
-
-      {s.description && (
-        <p className="px-5 pb-4 text-sm text-[#64748b] leading-relaxed">{s.description}</p>
-      )}
 
       <div className="px-5 pb-5 space-y-3">
         {s.result.matched_criteria.length > 0 && (

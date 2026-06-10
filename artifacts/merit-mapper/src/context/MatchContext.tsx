@@ -4,15 +4,13 @@ export interface Scholarship {
   id: string;
   name: string;
   provider: string;
-  description?: string;
   amount?: number;
   deadline?: string;
-  requirements?: string;
   eligibility?: string;
-  field_of_study?: string;
-  state_specific?: string;
-  min_gpa?: number;
   application_url?: string;
+  essay_required?: boolean;
+  renewable?: boolean;
+  category_tags?: string[];
 }
 
 export interface MatchResult {
