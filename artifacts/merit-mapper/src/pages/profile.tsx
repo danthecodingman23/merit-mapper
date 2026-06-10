@@ -1,4 +1,4 @@
-import { useState, FormEvent } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { Link, useLocation } from "wouter";
 import { useMatch, type MatchResult, type RankedScholarship } from "@/context/MatchContext";
 import { useScholarships } from "@/hooks/useScholarships";
@@ -14,6 +14,8 @@ interface ProfileForm {
   financialNeed: "low" | "medium" | "high" | "";
 }
 
+const STORAGE_KEY = "merit_mapper_profile";
+
 const INITIAL: ProfileForm = {
   fullName: "",
   gpa: "",
@@ -24,6 +26,16 @@ const INITIAL: ProfileForm = {
   skillsAndInterests: "",
   financialNeed: "",
 };
+
+function loadSaved(): ProfileForm {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return INITIAL;
+    return { ...INITIAL, ...JSON.parse(raw) };
+  } catch {
+    return INITIAL;
+  }
+}
 
 const US_STATES = [
   "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut",
@@ -37,12 +49,20 @@ const US_STATES = [
 ];
 
 export default function Profile() {
-  const [form, setForm] = useState<ProfileForm>(INITIAL);
+  const [form, setForm] = useState<ProfileForm>(loadSaved);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { setRanked } = useMatch();
   const [, navigate] = useLocation();
   const { scholarships, loading: scholarshipsLoading, error: scholarshipsError } = useScholarships();
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
+    } catch {
+      // storage unavailable — ignore
+    }
+  }, [form]);
 
   function set(field: keyof ProfileForm, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
