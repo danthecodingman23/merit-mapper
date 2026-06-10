@@ -6,6 +6,7 @@ import path from "path";
 export default defineConfig({
   base: "/",
   plugins: [react(), tailwindcss()],
+  envPrefix: ["VITE_", "NEXT_PUBLIC_"],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),
