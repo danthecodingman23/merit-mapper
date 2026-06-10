@@ -83,7 +83,11 @@ Call the return_match_results tool with one entry per scholarship.`;
 
     return res.status(200).json({ results });
   } catch (err) {
+    const message = err?.message ?? String(err);
+    const status = err?.status ?? 500;
     console.error("Anthropic API error:", err);
-    return res.status(500).json({ error: "Failed to contact matching engine" });
+    return res.status(status >= 400 && status < 600 ? status : 500).json({
+      error: `Matching engine error: ${message}`,
+    });
   }
 }
