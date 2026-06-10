@@ -64,8 +64,8 @@ Call the return_match_results tool with one entry per scholarship.`;
 
   try {
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 8192,
+      model: "claude-sonnet-4-5",
+      max_tokens: 4096,
       system: systemPrompt,
       tools: [MATCH_TOOL],
       tool_choice: { type: "tool", name: "return_match_results" },

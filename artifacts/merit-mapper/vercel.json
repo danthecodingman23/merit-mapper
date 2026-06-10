@@ -3,6 +3,12 @@
   "buildCommand": "pnpm run build:vercel",
   "outputDirectory": "dist/public",
   "framework": null,
+  "functions": {
+    "api/match.js": {
+      "runtime": "nodejs22.x",
+      "maxDuration": 60
+    }
+  },
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
