@@ -1,41 +1,9 @@
-import { useState, useEffect, FormEvent } from "react";
+import { useState, FormEvent } from "react";
 import { Link, useLocation } from "wouter";
 import { useMatch, type MatchResult, type RankedScholarship } from "@/context/MatchContext";
 import { useScholarships } from "@/hooks/useScholarships";
-
-interface ProfileForm {
-  fullName: string;
-  gpa: string;
-  graduationYear: string;
-  intendedMajor: string;
-  homeState: string;
-  extracurriculars: string;
-  skillsAndInterests: string;
-  financialNeed: "low" | "medium" | "high" | "";
-}
-
-const STORAGE_KEY = "merit_mapper_profile";
-
-const INITIAL: ProfileForm = {
-  fullName: "",
-  gpa: "",
-  graduationYear: "",
-  intendedMajor: "",
-  homeState: "",
-  extracurriculars: "",
-  skillsAndInterests: "",
-  financialNeed: "",
-};
-
-function loadSaved(): ProfileForm {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return INITIAL;
-    return { ...INITIAL, ...JSON.parse(raw) };
-  } catch {
-    return INITIAL;
-  }
-}
+import { useProfile, type ProfileData } from "@/hooks/useProfile";
+import { useAuth } from "@/context/AuthContext";
 
 const US_STATES = [
   "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut",
@@ -49,39 +17,32 @@ const US_STATES = [
 ];
 
 export default function Profile() {
-  const [form, setForm] = useState<ProfileForm>(loadSaved);
-  const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
+  const { profile, setProfile, saving, loadError, save } = useProfile();
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { setRanked } = useMatch();
   const [, navigate] = useLocation();
   const { scholarships, loading: scholarshipsLoading, error: scholarshipsError } = useScholarships();
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
-    } catch {
-      // storage unavailable — ignore
-    }
-  }, [form]);
-
-  function set(field: keyof ProfileForm, value: string) {
-    setForm((prev) => ({ ...prev, [field]: value }));
+  function set(field: keyof ProfileData, value: string) {
+    setProfile({ ...profile, [field]: value });
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setLoading(true);
+    setSubmitting(true);
     setError(null);
 
-    const profile = {
-      fullName: form.fullName,
-      gpa: parseFloat(form.gpa),
-      graduationYear: parseInt(form.graduationYear, 10),
-      intendedMajor: form.intendedMajor,
-      homeState: form.homeState,
-      extracurriculars: form.extracurriculars,
-      skillsAndInterests: form.skillsAndInterests,
-      financialNeed: form.financialNeed as "low" | "medium" | "high",
+    const profilePayload = {
+      fullName: profile.fullName,
+      gpa: parseFloat(profile.gpa),
+      graduationYear: parseInt(profile.graduationYear, 10),
+      intendedMajor: profile.intendedMajor,
+      homeState: profile.homeState,
+      extracurriculars: profile.extracurriculars,
+      skillsAndInterests: profile.skillsAndInterests,
+      financialNeed: profile.financialNeed as "low" | "medium" | "high",
     };
 
     console.log(`[profile] Submit — ${scholarships.length} scholarships loaded, sending to API…`);
@@ -93,7 +54,7 @@ export default function Profile() {
       const res = await fetch("/api/match", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile, scholarships }),
+        body: JSON.stringify({ profile: profilePayload, scholarships }),
         signal: controller.signal,
       });
 
@@ -107,7 +68,6 @@ export default function Profile() {
       const { results }: { results: MatchResult[] } = await res.json();
       console.log(`[profile] API returned ${results.length} results. Sample IDs:`, results.slice(0, 3).map((r) => r.id));
 
-      // Normalise both sides to string so integer vs string IDs always match
       const resultMap = new Map(results.map((r) => [String(r.id), r]));
       console.log("[profile] Scholarship IDs from Supabase:", scholarships.slice(0, 3).map((s) => `${s.id} (${typeof s.id})`));
 
@@ -118,6 +78,7 @@ export default function Profile() {
 
       console.log(`[profile] Merged ${merged.length} ranked scholarships. Navigating to /results…`);
 
+      await save(profile);
       setRanked(merged);
       navigate("/results");
     } catch (err) {
@@ -129,14 +90,14 @@ export default function Profile() {
       console.error("[profile] Error during matching:", err);
     } finally {
       clearTimeout(timeout);
-      setLoading(false);
+      setSubmitting(false);
     }
   }
 
   return (
     <div className="min-h-screen bg-[#f8f7f4] py-10 px-4">
       {/* Full-page loading overlay */}
-      {loading && (
+      {submitting && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#f8f7f4]/90 backdrop-blur-sm">
           <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-lg px-10 py-10 flex flex-col items-center gap-5 max-w-sm w-full mx-4">
             <div className="w-12 h-12 rounded-full border-4 border-[#e2e8f0] border-t-[#2563eb] animate-spin" />
@@ -152,7 +113,7 @@ export default function Profile() {
       )}
 
       <div className="max-w-2xl mx-auto">
-        <div className="mb-8">
+        <div className="mb-8 flex items-center justify-between">
           <Link href="/">
             <button className="text-sm font-medium text-[#2563eb] hover:text-[#1d4ed8] transition-colors flex items-center gap-1.5">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -161,8 +122,20 @@ export default function Profile() {
               Back to home
             </button>
           </Link>
-          <h1 className="text-2xl font-bold text-[#1a1a2e] mt-4 mb-1">Your profile</h1>
+          {user && (
+            <p className="text-xs text-[#94a3b8]">{user.email}</p>
+          )}
+        </div>
+
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-[#1a1a2e] mb-1">Your profile</h1>
           <p className="text-sm text-[#64748b]">Tell us about yourself so we can match you with the right scholarships.</p>
+          {saving && (
+            <p className="text-xs text-[#94a3b8] mt-1">Saving…</p>
+          )}
+          {loadError && (
+            <p className="text-xs text-amber-600 mt-1">{loadError}</p>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -173,7 +146,7 @@ export default function Profile() {
               <input
                 type="text"
                 placeholder="Jane Smith"
-                value={form.fullName}
+                value={profile.fullName}
                 onChange={(e) => set("fullName", e.target.value)}
                 required
                 className={inputClass}
@@ -188,7 +161,7 @@ export default function Profile() {
                   min="0"
                   max="4.0"
                   step="0.01"
-                  value={form.gpa}
+                  value={profile.gpa}
                   onChange={(e) => set("gpa", e.target.value)}
                   required
                   className={inputClass}
@@ -201,7 +174,7 @@ export default function Profile() {
                   placeholder="2026"
                   min="2024"
                   max="2035"
-                  value={form.graduationYear}
+                  value={profile.graduationYear}
                   onChange={(e) => set("graduationYear", e.target.value)}
                   required
                   className={inputClass}
@@ -214,7 +187,7 @@ export default function Profile() {
                 <input
                   type="text"
                   placeholder="Computer Science"
-                  value={form.intendedMajor}
+                  value={profile.intendedMajor}
                   onChange={(e) => set("intendedMajor", e.target.value)}
                   required
                   className={inputClass}
@@ -223,7 +196,7 @@ export default function Profile() {
 
               <Field label="Home state" required>
                 <select
-                  value={form.homeState}
+                  value={profile.homeState}
                   onChange={(e) => set("homeState", e.target.value)}
                   required
                   className={inputClass}
@@ -243,7 +216,7 @@ export default function Profile() {
             <Field label="Extracurriculars" hint="Clubs, sports, volunteering, etc.">
               <textarea
                 placeholder="Student government president, varsity soccer, local food bank volunteer..."
-                value={form.extracurriculars}
+                value={profile.extracurriculars}
                 onChange={(e) => set("extracurriculars", e.target.value)}
                 rows={3}
                 className={`${inputClass} resize-none`}
@@ -253,7 +226,7 @@ export default function Profile() {
             <Field label="Skills & interests" hint="Technical skills, hobbies, passions">
               <textarea
                 placeholder="Python, data analysis, music composition, environmental sustainability..."
-                value={form.skillsAndInterests}
+                value={profile.skillsAndInterests}
                 onChange={(e) => set("skillsAndInterests", e.target.value)}
                 rows={3}
                 className={`${inputClass} resize-none`}
@@ -262,8 +235,8 @@ export default function Profile() {
 
             <Field label="Financial need level" required>
               <select
-                value={form.financialNeed}
-                onChange={(e) => set("financialNeed", e.target.value as ProfileForm["financialNeed"])}
+                value={profile.financialNeed}
+                onChange={(e) => set("financialNeed", e.target.value as ProfileData["financialNeed"])}
                 required
                 className={inputClass}
               >
@@ -301,7 +274,7 @@ export default function Profile() {
 
           <button
             type="submit"
-            disabled={loading || scholarshipsLoading || scholarships.length === 0}
+            disabled={submitting || scholarshipsLoading || scholarships.length === 0}
             className="w-full bg-[#2563eb] hover:bg-[#1d4ed8] active:bg-[#1e40af] disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-xl text-base transition-all duration-150 shadow-sm hover:shadow-md flex items-center justify-center gap-2"
           >
             {scholarshipsLoading ? (
@@ -312,7 +285,7 @@ export default function Profile() {
                 </svg>
                 Loading scholarships…
               </>
-            ) : loading ? (
+            ) : submitting ? (
               <>
                 <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24" fill="none">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
