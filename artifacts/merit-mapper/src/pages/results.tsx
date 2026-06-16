@@ -96,7 +96,7 @@ function ScholarshipCard({ s }: { s: RankedScholarship }) {
             )}
           </div>
         )}
-        {s.category_tags && s.category_tags.length > 0 && (
+        {Array.isArray(s.category_tags) && s.category_tags.length > 0 && (
           <div className="flex items-center gap-1.5 text-sm text-[#475569]">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M7 1L13 4.5v4L7 12 1 8.5v-4L7 1z" stroke="#64748b" strokeWidth="1.4" strokeLinejoin="round"/>

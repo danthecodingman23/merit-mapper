@@ -12,7 +12,17 @@ interface SupabaseScholarshipRow {
   application_url: string | null;
   essay_required: boolean | null;
   renewable: boolean | null;
-  category_tags: string[] | null;
+  category_tags: string[] | string | null;
+}
+
+function normalizeTags(raw: string[] | string | null | undefined): string[] | undefined {
+  if (!raw) return undefined;
+  if (Array.isArray(raw)) return raw.length > 0 ? raw : undefined;
+  if (typeof raw === "string") {
+    const parts = raw.split(",").map((t) => t.trim()).filter(Boolean);
+    return parts.length > 0 ? parts : undefined;
+  }
+  return undefined;
 }
 
 function toScholarship(row: SupabaseScholarshipRow): Scholarship {
@@ -26,7 +36,7 @@ function toScholarship(row: SupabaseScholarshipRow): Scholarship {
     application_url: row.application_url ?? undefined,
     essay_required: row.essay_required ?? undefined,
     renewable: row.renewable ?? undefined,
-    category_tags: row.category_tags ?? undefined,
+    category_tags: normalizeTags(row.category_tags),
   };
 }
 
