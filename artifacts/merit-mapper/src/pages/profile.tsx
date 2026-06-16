@@ -84,6 +84,8 @@ export default function Profile() {
       financialNeed: form.financialNeed as "low" | "medium" | "high",
     };
 
+    console.log(`[profile] Submit — ${scholarships.length} scholarships loaded, sending to API…`);
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15_000);
 
@@ -95,18 +97,26 @@ export default function Profile() {
         signal: controller.signal,
       });
 
+      console.log("[profile] API response status:", res.status);
+
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error((body as { error?: string }).error ?? `Server error ${res.status}`);
       }
 
       const { results }: { results: MatchResult[] } = await res.json();
+      console.log(`[profile] API returned ${results.length} results. Sample IDs:`, results.slice(0, 3).map((r) => r.id));
 
-      const resultMap = new Map(results.map((r) => [r.id, r]));
+      // Normalise both sides to string so integer vs string IDs always match
+      const resultMap = new Map(results.map((r) => [String(r.id), r]));
+      console.log("[profile] Scholarship IDs from Supabase:", scholarships.slice(0, 3).map((s) => `${s.id} (${typeof s.id})`));
+
       const merged: RankedScholarship[] = scholarships
-        .filter((s) => resultMap.has(s.id))
-        .map((s) => ({ ...s, result: resultMap.get(s.id)! }))
+        .filter((s) => resultMap.has(String(s.id)))
+        .map((s) => ({ ...s, result: resultMap.get(String(s.id))! }))
         .sort((a, b) => b.result.match_score - a.result.match_score);
+
+      console.log(`[profile] Merged ${merged.length} ranked scholarships. Navigating to /results…`);
 
       setRanked(merged);
       navigate("/results");
@@ -116,6 +126,7 @@ export default function Profile() {
       } else {
         setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
       }
+      console.error("[profile] Error during matching:", err);
     } finally {
       clearTimeout(timeout);
       setLoading(false);

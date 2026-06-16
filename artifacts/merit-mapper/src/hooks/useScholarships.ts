@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 import type { Scholarship } from "@/context/MatchContext";
 
 interface SupabaseScholarshipRow {
-  id: string;
+  id: string | number;
   scholarship_name: string;
   provider: string;
   amount: number | null;
@@ -17,7 +17,7 @@ interface SupabaseScholarshipRow {
 
 function toScholarship(row: SupabaseScholarshipRow): Scholarship {
   return {
-    id: row.id,
+    id: String(row.id),
     name: row.scholarship_name,
     provider: row.provider,
     amount: row.amount ?? undefined,
@@ -44,9 +44,11 @@ export function useScholarships(): UseScholarshipsResult {
   useEffect(() => {
     let cancelled = false;
 
-    async function fetch() {
+    async function load() {
       setLoading(true);
       setError(null);
+
+      console.log("[useScholarships] Fetching scholarships from Supabase…");
 
       const { data, error: sbError } = await supabase
         .from("scholarships")
@@ -58,16 +60,21 @@ export function useScholarships(): UseScholarshipsResult {
       if (cancelled) return;
 
       if (sbError) {
+        console.error("[useScholarships] Supabase error:", sbError.message);
         setError(sbError.message);
         setLoading(false);
         return;
       }
 
-      setScholarships(((data as SupabaseScholarshipRow[]) ?? []).map(toScholarship));
+      const rows = (data as SupabaseScholarshipRow[]) ?? [];
+      console.log(`[useScholarships] Loaded ${rows.length} scholarships. First ID:`, rows[0]?.id, typeof rows[0]?.id);
+
+      const mapped = rows.map(toScholarship);
+      setScholarships(mapped);
       setLoading(false);
     }
 
-    fetch();
+    load();
     return () => { cancelled = true; };
   }, []);
 
