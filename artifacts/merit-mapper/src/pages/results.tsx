@@ -43,8 +43,10 @@ function ScoreRing({ score }: { score: number }) {
 }
 
 function ScholarshipCard({ s }: { s: RankedScholarship }) {
-  const badge = scoreBadge(s.result.match_score);
-  const urgency = URGENCY[s.result.deadline_urgency];
+  const badge = scoreBadge(s.result.match_score ?? 0);
+  const urgency = URGENCY[s.result.deadline_urgency] ?? URGENCY.low;
+  const matchedCriteria: string[] = Array.isArray(s.result.matched_criteria) ? s.result.matched_criteria : [];
+  const missingCriteria: string[] = Array.isArray(s.result.missing_criteria) ? s.result.missing_criteria : [];
 
   return (
     <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-sm overflow-hidden">
@@ -107,13 +109,13 @@ function ScholarshipCard({ s }: { s: RankedScholarship }) {
       </div>
 
       <div className="px-5 pb-5 space-y-3">
-        {s.result.matched_criteria.length > 0 && (
+        {matchedCriteria.length > 0 && (
           <div>
             <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-1.5">
               Why you match
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {s.result.matched_criteria.map((c) => (
+              {matchedCriteria.map((c) => (
                 <span key={c} className="text-xs bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full flex items-center gap-1">
                   <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                     <path d="M2 5l2.5 2.5L8 3" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -125,13 +127,13 @@ function ScholarshipCard({ s }: { s: RankedScholarship }) {
           </div>
         )}
 
-        {s.result.missing_criteria.length > 0 && (
+        {missingCriteria.length > 0 && (
           <div>
             <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-1.5">
               Gaps to be aware of
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {s.result.missing_criteria.map((c) => (
+              {missingCriteria.map((c) => (
                 <span key={c} className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1">
                   <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                     <path d="M5 3v2.5M5 7.5v.1" stroke="#d97706" strokeWidth="1.5" strokeLinecap="round"/>
