@@ -84,11 +84,15 @@ export default function Profile() {
       financialNeed: form.financialNeed as "low" | "medium" | "high",
     };
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+
     try {
       const res = await fetch("/api/match", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ profile, scholarships }),
+        signal: controller.signal,
       });
 
       if (!res.ok) {
@@ -98,7 +102,6 @@ export default function Profile() {
 
       const { results }: { results: MatchResult[] } = await res.json();
 
-      // Merge API results with full scholarship metadata
       const resultMap = new Map(results.map((r) => [r.id, r]));
       const merged: RankedScholarship[] = scholarships
         .filter((s) => resultMap.has(s.id))
@@ -108,14 +111,35 @@ export default function Profile() {
       setRanked(merged);
       navigate("/results");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setError("The matching engine took too long to respond. Please try again.");
+      } else {
+        setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      }
     } finally {
+      clearTimeout(timeout);
       setLoading(false);
     }
   }
 
   return (
     <div className="min-h-screen bg-[#f8f7f4] py-10 px-4">
+      {/* Full-page loading overlay */}
+      {loading && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#f8f7f4]/90 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-lg px-10 py-10 flex flex-col items-center gap-5 max-w-sm w-full mx-4">
+            <div className="w-12 h-12 rounded-full border-4 border-[#e2e8f0] border-t-[#2563eb] animate-spin" />
+            <div className="text-center">
+              <p className="font-semibold text-[#1a1a2e] text-lg">Finding your matches</p>
+              <p className="text-sm text-[#64748b] mt-1">Analyzing scholarships with AI — this can take up to 15 seconds</p>
+            </div>
+            <div className="w-full bg-[#f1f5f9] rounded-full h-1.5 overflow-hidden">
+              <div className="h-full w-1/3 bg-[#2563eb] rounded-full animate-pulse" />
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-2xl mx-auto">
         <div className="mb-8">
           <Link href="/">
@@ -247,8 +271,20 @@ export default function Profile() {
           )}
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
-              {error}
+            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-4 flex items-start gap-3">
+              <svg className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
+              </svg>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-red-700">{error}</p>
+                <button
+                  type="button"
+                  onClick={() => setError(null)}
+                  className="mt-2 text-sm font-semibold text-red-700 underline underline-offset-2 hover:text-red-900 transition-colors"
+                >
+                  Try again
+                </button>
+              </div>
             </div>
           )}
 
