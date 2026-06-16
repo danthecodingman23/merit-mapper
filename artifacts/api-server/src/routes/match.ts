@@ -4,9 +4,35 @@ import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
-const MAX_SCHOLARSHIPS = 12;
+const MAX_SCHOLARSHIPS = 8;
 
-function preFilter(scholarships: Scholarship[], profile: StudentProfile): Scholarship[] {
+interface ClaudeScholarship {
+  id: string;
+  name: string;
+  provider: string;
+  eligibility?: string;
+  category_tags?: string[];
+  amount?: number;
+  deadline?: string;
+  essay_required?: boolean;
+  renewable?: boolean;
+}
+
+function trimForClaude(s: Scholarship): ClaudeScholarship {
+  return {
+    id: s.id,
+    name: s.name,
+    provider: s.provider,
+    eligibility: s.eligibility,
+    category_tags: s.category_tags,
+    amount: s.amount,
+    deadline: s.deadline,
+    essay_required: s.essay_required,
+    renewable: s.renewable,
+  };
+}
+
+function preFilter(scholarships: Scholarship[], profile: StudentProfile): ClaudeScholarship[] {
   const gpa = profile.gpa ?? 0;
   const state = (profile.homeState ?? "").toLowerCase();
 
@@ -16,7 +42,8 @@ function preFilter(scholarships: Scholarship[], profile: StudentProfile): Schola
       if (s.state_specific && !s.state_specific.toLowerCase().includes(state)) return false;
       return true;
     })
-    .slice(0, MAX_SCHOLARSHIPS);
+    .slice(0, MAX_SCHOLARSHIPS)
+    .map(trimForClaude);
 }
 
 const apiKey = process.env["ANTHROPIC_API_KEY"];
@@ -40,12 +67,15 @@ export interface StudentProfile {
 export interface Scholarship {
   id: string;
   name: string;
-  description?: string;
+  provider: string;
   amount?: number;
   deadline?: string;
-  requirements?: string;
   eligibility?: string;
-  field_of_study?: string;
+  application_url?: string;
+  essay_required?: boolean;
+  renewable?: boolean;
+  category_tags?: string[];
+  // legacy fields kept for pre-filter compatibility
   state_specific?: string;
   min_gpa?: number;
 }

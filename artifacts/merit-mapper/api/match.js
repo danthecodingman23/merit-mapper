@@ -2,7 +2,25 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const MAX_SCHOLARSHIPS = 12;
+const MAX_SCHOLARSHIPS = 8;
+
+/**
+ * Trim a scholarship to only the fields Claude needs for scoring.
+ * Keeps the prompt small and fast.
+ */
+function trimForClaude(s) {
+  return {
+    id: s.id,
+    name: s.name,
+    provider: s.provider,
+    eligibility: s.eligibility ?? null,
+    category_tags: s.category_tags ?? null,
+    amount: s.amount ?? null,
+    deadline: s.deadline ?? null,
+    essay_required: s.essay_required ?? null,
+    renewable: s.renewable ?? null,
+  };
+}
 
 /**
  * Quick rule-based pre-filter to cut the list before hitting Claude.
@@ -14,13 +32,12 @@ function preFilter(scholarships, profile) {
 
   return scholarships
     .filter((s) => {
-      // Drop if student GPA is below the hard minimum
       if (s.min_gpa != null && gpa < s.min_gpa) return false;
-      // Drop state-restricted scholarships that don't match
       if (s.state_specific && !s.state_specific.toLowerCase().includes(state)) return false;
       return true;
     })
-    .slice(0, MAX_SCHOLARSHIPS);
+    .slice(0, MAX_SCHOLARSHIPS)
+    .map(trimForClaude);
 }
 
 const MATCH_TOOL = {

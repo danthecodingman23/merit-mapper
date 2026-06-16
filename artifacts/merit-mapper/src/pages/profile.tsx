@@ -87,7 +87,7 @@ export default function Profile() {
     console.log(`[profile] Submit — ${scholarships.length} scholarships loaded, sending to API…`);
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15_000);
+    const timeout = setTimeout(() => controller.abort(), 25_000);
 
     try {
       const res = await fetch("/api/match", {
@@ -142,7 +142,7 @@ export default function Profile() {
             <div className="w-12 h-12 rounded-full border-4 border-[#e2e8f0] border-t-[#2563eb] animate-spin" />
             <div className="text-center">
               <p className="font-semibold text-[#1a1a2e] text-lg">Finding your matches</p>
-              <p className="text-sm text-[#64748b] mt-1">Analyzing scholarships with AI — this can take up to 15 seconds</p>
+              <p className="text-sm text-[#64748b] mt-1">Analyzing scholarships with AI — this can take up to 25 seconds</p>
             </div>
             <div className="w-full bg-[#f1f5f9] rounded-full h-1.5 overflow-hidden">
               <div className="h-full w-1/3 bg-[#2563eb] rounded-full animate-pulse" />
