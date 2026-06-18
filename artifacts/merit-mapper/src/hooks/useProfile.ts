@@ -76,10 +76,11 @@ export function useProfile(): UseProfileResult {
       .from("profiles")
       .select("*")
       .eq("id", user.id)
-      .single()
+      .maybeSingle()
       .then(({ data, error }) => {
-        if (error && error.code !== "PGRST116") {
-          setLoadError("Could not load saved profile.");
+        if (error) {
+          console.error("[useProfile] load error:", error.code, error.message, error.details, error.hint);
+          setLoadError(`Could not load saved profile (${error.code}: ${error.message})`);
           return;
         }
         if (data) {
