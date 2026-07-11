@@ -14,13 +14,45 @@ export default function Login() {
     setError(null);
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    console.log("[login] Attempting signInWithPassword for:", email);
 
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-    } else {
+    try {
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+
+      console.log("[login] result — user:", data?.user?.id ?? null, "error:", signInError?.message ?? null);
+
+      if (signInError) {
+        const msg = signInError.message.toLowerCase();
+        if (msg.includes("invalid login credentials") || msg.includes("invalid email or password")) {
+          setError("Incorrect email or password. Please try again.");
+        } else if (msg.includes("email not confirmed")) {
+          setError("Please confirm your email address before signing in.");
+        } else if (msg.includes("failed to fetch") || msg.includes("network")) {
+          setError("Network error — check your connection and try again.");
+        } else {
+          setError(signInError.message);
+        }
+        setLoading(false);
+        return;
+      }
+
+      if (!data.user) {
+        setError("Sign in failed — no user returned. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      console.log("[login] Success — navigating to /profile");
       navigate("/profile");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      console.error("[login] Unexpected error:", err);
+      if (msg.toLowerCase().includes("failed to fetch") || msg.toLowerCase().includes("network")) {
+        setError("Network error — check your connection and try again.");
+      } else {
+        setError(msg);
+      }
+      setLoading(false);
     }
   };
 
@@ -53,9 +85,7 @@ export default function Login() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-[#374151] mb-1.5">
-                  Email
-                </label>
+                <label className="block text-sm font-medium text-[#374151] mb-1.5">Email</label>
                 <input
                   type="email"
                   required
@@ -67,9 +97,7 @@ export default function Login() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#374151] mb-1.5">
-                  Password
-                </label>
+                <label className="block text-sm font-medium text-[#374151] mb-1.5">Password</label>
                 <input
                   type="password"
                   required
