@@ -48,55 +48,48 @@ function ScholarshipCard({
   onSave: () => Promise<{ error: string | null }>;
   onUnsave: () => Promise<{ error: string | null }>;
 }) {
-  const badge = scoreBadge(s.result.match_score ?? 0);
-  const urgency = URGENCY[s.result.deadline_urgency] ?? URGENCY.low;
-  const matchedCriteria: string[] = Array.isArray(s.result.matched_criteria) ? s.result.matched_criteria : [];
-  const missingCriteria: string[] = Array.isArray(s.result.missing_criteria) ? s.result.missing_criteria : [];
-
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const badge = scoreBadge(s.result.match_score);
+  const urgency = URGENCY[s.result.deadline_urgency] ?? URGENCY.low;
+  const matchedCriteria = s.result.matched_criteria ?? [];
+  const missingCriteria = s.result.missing_criteria ?? [];
 
   const handleSaveToggle = async () => {
     setSaving(true);
     setFeedback(null);
-    console.log("[ScholarshipCard] save toggle — isSaved:", isSaved, "scholarship:", s.id, s.name);
-    try {
-      const result = isSaved ? await onUnsave() : await onSave();
-      if (result.error) {
-        console.error("[ScholarshipCard] operation failed:", result.error);
-        setFeedback({ type: "error", msg: result.error });
-      } else {
-        setFeedback({ type: "success", msg: isSaved ? "Removed from saved" : "Scholarship saved!" });
-        setTimeout(() => setFeedback(null), 3000);
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Unexpected error";
-      console.error("[ScholarshipCard] unexpected error:", err);
-      setFeedback({ type: "error", msg });
-    }
+    const { error } = isSaved ? await onUnsave() : await onSave();
     setSaving(false);
+    if (error) {
+      if (error === "session_expired" || error === "not_logged_in") {
+        setFeedback({ type: "error", msg: "session_expired" });
+      } else {
+        setFeedback({ type: "error", msg: error });
+      }
+      setTimeout(() => setFeedback(null), 6000);
+    } else {
+      setFeedback({ type: "success", msg: isSaved ? "Removed from saved" : "Saved!" });
+      setTimeout(() => setFeedback(null), 2000);
+    }
   };
 
   return (
     <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-sm overflow-hidden">
-      {/* Header */}
-      <div className="p-5 pb-4 flex items-start gap-4">
+      <div className="px-5 pt-5 pb-3 flex items-start gap-4">
         <ScoreRing score={s.result.match_score} />
         <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-2 mb-0.5">
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${badge.bg}`}>{badge.label}</span>
-            {s.result.deadline_urgency === "high" && (
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${urgency.chip}`}>
-                ⚠ {urgency.label}
-              </span>
-            )}
+          <div className="flex items-start justify-between gap-2 flex-wrap">
+            <h2 className="text-base font-bold text-[#1a1a2e] leading-snug">{s.name}</h2>
+            <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border flex-shrink-0 ${badge.bg}`}>
+              {badge.label}
+            </span>
           </div>
-          <h3 className="font-semibold text-[#1a1a2e] leading-tight mt-1">{s.name}</h3>
-          <p className="text-xs text-[#64748b] mt-0.5">{s.provider}</p>
+          {s.provider && (
+            <p className="text-sm text-[#64748b] mt-0.5">{s.provider}</p>
+          )}
         </div>
       </div>
 
-      {/* Meta */}
       <div className="px-5 pb-4 flex flex-wrap gap-3">
         {s.amount != null && (
           <div className="flex items-center gap-1.5 text-sm">
@@ -211,13 +204,23 @@ function ScholarshipCard({
         </div>
 
         {feedback && (
-          <div className={`text-xs font-medium px-3 py-1.5 rounded-lg ${
-            feedback.type === "success"
-              ? "bg-green-50 text-green-700 border border-green-200"
-              : "bg-red-50 text-red-600 border border-red-200"
-          }`}>
-            {feedback.type === "success" ? "✓ " : "✗ "}{feedback.msg}
-          </div>
+          feedback.msg === "session_expired" ? (
+            <div className="text-xs font-medium px-3 py-2 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-2">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="flex-shrink-0">
+                <path d="M6.5 1L12 11H1L6.5 1z" stroke="#d97706" strokeWidth="1.2" strokeLinejoin="round"/>
+                <path d="M6.5 5v2.5M6.5 9.5v.1" stroke="#d97706" strokeWidth="1.3" strokeLinecap="round"/>
+              </svg>
+              Session expired — scroll up and sign out, then sign back in to save.
+            </div>
+          ) : (
+            <div className={`text-xs font-medium px-3 py-1.5 rounded-lg ${
+              feedback.type === "success"
+                ? "bg-green-50 text-green-700 border border-green-200"
+                : "bg-red-50 text-red-600 border border-red-200"
+            }`}>
+              {feedback.type === "success" ? "✓ " : "✗ "}{feedback.msg}
+            </div>
+          )
         )}
       </div>
     </div>
@@ -226,32 +229,56 @@ function ScholarshipCard({
 
 export default function Results() {
   const { ranked } = useMatch();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [, navigate] = useLocation();
   const { isSaved, save, unsave } = useSavedScholarships();
-
-  const strong = ranked.filter((s) => s.result.match_score >= 80);
-  const moderate = ranked.filter((s) => s.result.match_score >= 50 && s.result.match_score < 80);
-  const weak = ranked.filter((s) => s.result.match_score < 50);
+  const [showExpiredBanner, setShowExpiredBanner] = useState(false);
 
   const handleSave = async (s: RankedScholarship): Promise<{ error: string | null }> => {
     if (!user) {
-      console.log("[Results] handleSave: no user, redirecting to login");
       navigate("/login");
       return { error: "Please sign in to save scholarships." };
     }
-    console.log("[Results] handleSave: saving scholarship", s.id, s.name);
-    return save({ id: s.id, name: s.name, amount: s.amount, application_url: s.application_url });
+    const result = await save({ id: s.id, name: s.name, amount: s.amount, application_url: s.application_url });
+    if (result.error === "session_expired") setShowExpiredBanner(true);
+    return result;
   };
 
   const handleUnsave = async (s: RankedScholarship): Promise<{ error: string | null }> => {
-    console.log("[Results] handleUnsave: unsaving scholarship", s.id);
-    return unsave(s.id);
+    const result = await unsave(s.id);
+    if (result.error === "session_expired") setShowExpiredBanner(true);
+    return result;
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login");
   };
 
   return (
     <div className="min-h-screen bg-[#f8f7f4] py-10 px-4">
       <div className="max-w-2xl mx-auto">
+
+        {/* Session-expired banner */}
+        {showExpiredBanner && (
+          <div className="mb-6 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3.5 shadow-sm">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="flex-shrink-0 mt-0.5">
+              <path d="M9 2L16 15H2L9 2z" stroke="#d97706" strokeWidth="1.4" strokeLinejoin="round"/>
+              <path d="M9 7v3.5M9 13v.1" stroke="#d97706" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-amber-900">Your session has expired</p>
+              <p className="text-xs text-amber-700 mt-0.5">Sign out and sign back in to save scholarships. Your results will still be here.</p>
+            </div>
+            <button
+              onClick={handleSignOut}
+              className="flex-shrink-0 text-xs font-semibold bg-amber-700 hover:bg-amber-800 text-white px-3 py-1.5 rounded-lg transition-colors"
+            >
+              Sign out
+            </button>
+          </div>
+        )}
+
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <Link href="/profile">
@@ -262,16 +289,26 @@ export default function Results() {
                 Edit profile
               </button>
             </Link>
-            {user && (
-              <Link href="/saved">
-                <button className="text-sm font-medium text-[#475569] hover:text-[#1a1a2e] transition-colors flex items-center gap-1.5">
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M3 2h8a1 1 0 0 1 1 1v9l-5-3-5 3V3a1 1 0 0 1 1-1z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-                  </svg>
-                  Saved
+            <div className="flex items-center gap-4">
+              {user && (
+                <Link href="/saved">
+                  <button className="text-sm font-medium text-[#475569] hover:text-[#1a1a2e] transition-colors flex items-center gap-1.5">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path d="M3 2h8a1 1 0 0 1 1 1v9l-5-3-5 3V3a1 1 0 0 1 1-1z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+                    </svg>
+                    Saved
+                  </button>
+                </Link>
+              )}
+              {user && (
+                <button
+                  onClick={handleSignOut}
+                  className="text-sm font-medium text-[#94a3b8] hover:text-[#475569] transition-colors"
+                >
+                  Sign out
                 </button>
-              </Link>
-            )}
+              )}
+            </div>
           </div>
           <h1 className="text-2xl font-bold text-[#1a1a2e] mt-4 mb-1">Your scholarship matches</h1>
           <p className="text-sm text-[#64748b]">
@@ -281,22 +318,22 @@ export default function Results() {
           </p>
           {ranked.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-3">
-              {strong.length > 0 && (
+              {ranked.filter((s) => s.result.match_score >= 80).length > 0 && (
                 <div className="flex items-center gap-1.5 text-sm">
                   <span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" />
-                  <span className="text-[#475569]">{strong.length} strong</span>
+                  <span className="text-[#475569]">{ranked.filter((s) => s.result.match_score >= 80).length} strong</span>
                 </div>
               )}
-              {moderate.length > 0 && (
+              {ranked.filter((s) => s.result.match_score >= 50 && s.result.match_score < 80).length > 0 && (
                 <div className="flex items-center gap-1.5 text-sm">
                   <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block" />
-                  <span className="text-[#475569]">{moderate.length} moderate</span>
+                  <span className="text-[#475569]">{ranked.filter((s) => s.result.match_score >= 50 && s.result.match_score < 80).length} moderate</span>
                 </div>
               )}
-              {weak.length > 0 && (
+              {ranked.filter((s) => s.result.match_score < 50).length > 0 && (
                 <div className="flex items-center gap-1.5 text-sm">
                   <span className="w-2.5 h-2.5 rounded-full bg-slate-300 inline-block" />
-                  <span className="text-[#475569]">{weak.length} weak</span>
+                  <span className="text-[#475569]">{ranked.filter((s) => s.result.match_score < 50).length} weak</span>
                 </div>
               )}
             </div>

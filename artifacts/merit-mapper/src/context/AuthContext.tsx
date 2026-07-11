@@ -6,6 +6,7 @@ interface AuthContextValue {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  sessionExpired: boolean;   // true when the JWT could not be refreshed
   signOut: () => Promise<void>;
 }
 
@@ -15,35 +16,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   useEffect(() => {
     // Seed state immediately from localStorage — no network call needed.
-    // This prevents the flash where loading=true/user=null causes a redirect to login.
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setUser(data.session?.user ?? null);
       setLoading(false);
     }).catch(() => {
-      // If getSession fails (e.g. project paused), leave loading=false with no user.
       setLoading(false);
     });
 
-    // Keep session in sync with any future auth events (sign in, sign out, token refresh).
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log("[auth] state change — event:", _event, "user:", session?.user?.id ?? null);
+    // Keep session in sync with any future auth events.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("[auth] state change — event:", event, "user:", session?.user?.id ?? null);
+
+      // "TOKEN_REFRESH_FAILED" may not be in the type union in some supabase-js versions.
+      if ((event as string) === "TOKEN_REFRESH_FAILED") {
+        // autoRefreshToken tried and failed — mark session as expired so the UI can prompt sign-in.
+        console.warn("[auth] TOKEN_REFRESH_FAILED — session is expired and refresh server is unreachable.");
+        setSessionExpired(true);
+        return;
+      }
+
       setSession(session);
       setUser(session?.user ?? null);
+
+      // Clear the expired flag on a successful sign-in or token refresh.
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        setSessionExpired(false);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    // scope: "local" clears localStorage only — no network call to the auth server.
+    // This is safer when the server is unreachable.
+    await supabase.auth.signOut({ scope: "local" });
+    setSessionExpired(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, sessionExpired, signOut }}>
       {children}
     </AuthContext.Provider>
   );
