@@ -11,52 +11,6 @@ export interface SavedScholarship {
   saved_at: string;
 }
 
-/**
- * Validates the session by calling getUser(), which hits the Supabase auth server
- * (unlike getSession() which only reads localStorage and can return a stale/expired token).
- * Returns { uid, accessToken } if valid, or { error } if not.
- */
-async function validateAndRefreshSession(): Promise<
-  { uid: string; accessToken: string; error: null } | { uid: null; accessToken: null; error: string }
-> {
-  console.log("[validateSession] calling supabase.auth.getUser() to verify JWT server-side");
-
-  // getUser() makes a real network call — it returns an error if the JWT is expired or invalid.
-  const { data, error } = await supabase.auth.getUser();
-
-  if (error || !data.user) {
-    console.warn("[validateSession] getUser failed:", error?.message ?? "no user returned");
-
-    // Try to refresh the session explicitly before giving up.
-    console.log("[validateSession] attempting refreshSession()");
-    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-
-    if (refreshError || !refreshData.session) {
-      console.error("[validateSession] refreshSession also failed:", refreshError?.message ?? "no session");
-      return { uid: null, accessToken: null, error: "Your session has expired. Please sign in again." };
-    }
-
-    console.log("[validateSession] refreshSession succeeded, user:", refreshData.user?.id);
-    return {
-      uid: refreshData.user!.id,
-      accessToken: refreshData.session.access_token,
-      error: null,
-    };
-  }
-
-  // Get the current session to confirm we have an access token.
-  const { data: sessionData } = await supabase.auth.getSession();
-  const accessToken = sessionData?.session?.access_token;
-
-  if (!accessToken) {
-    console.warn("[validateSession] getUser succeeded but no access_token in session");
-    return { uid: null, accessToken: null, error: "Your session has expired. Please sign in again." };
-  }
-
-  console.log("[validateSession] valid session — user:", data.user.id, "| token prefix:", accessToken.slice(0, 12) + "…");
-  return { uid: data.user.id, accessToken, error: null };
-}
-
 export function useSavedScholarships() {
   const { user } = useAuth();
   const [saved, setSaved] = useState<SavedScholarship[]>([]);
@@ -65,7 +19,6 @@ export function useSavedScholarships() {
 
   const fetchSaved = useCallback(async () => {
     if (!user) {
-      console.log("[useSavedScholarships] fetchSaved: no user, skipping");
       setSaved([]);
       setSavedIds(new Set());
       return;
@@ -80,7 +33,7 @@ export function useSavedScholarships() {
         .order("saved_at", { ascending: false });
 
       if (error) {
-        console.error("[useSavedScholarships] fetchSaved error:", { message: error.message, code: error.code });
+        console.error("[useSavedScholarships] fetchSaved error:", error.message, "code:", error.code);
       } else {
         console.log("[useSavedScholarships] fetchSaved: got", data?.length ?? 0, "rows");
         setSaved(data ?? []);
@@ -102,25 +55,30 @@ export function useSavedScholarships() {
     application_url?: string | null;
   }): Promise<{ error: string | null }> => {
     if (!user) {
-      console.warn("[useSavedScholarships] save: no user in React state");
+      console.warn("[useSavedScholarships] save called with no user");
       return { error: "not_logged_in" };
     }
 
-    // Validate the session against the Supabase server before attempting the insert.
-    const session = await validateAndRefreshSession();
-    if (session.error) {
-      return { error: session.error };
+    // Read session from localStorage — no network call, no auth-server dependency.
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData?.session;
+    console.log("[useSavedScholarships] save — user:", user.id, "| session present:", !!session, "| token prefix:", session?.access_token?.slice(0, 12) ?? "none");
+
+    if (!session) {
+      return { error: "No active session found. Please sign out and sign back in." };
     }
 
     const row = {
-      user_id: session.uid,
+      user_id: user.id,
       scholarship_id: scholarship.id,
       scholarship_name: scholarship.name,
       amount: scholarship.amount ?? null,
       application_url: scholarship.application_url ?? null,
     };
-    console.log("[useSavedScholarships] save: inserting row:", row);
+    console.log("[useSavedScholarships] save — inserting:", row);
 
+    // The Supabase client automatically attaches the JWT from its internal session
+    // to every request — no manual header injection needed.
     const { data, error } = await supabase
       .from("saved_scholarships")
       .upsert(row, { onConflict: "user_id,scholarship_id" })
@@ -133,14 +91,13 @@ export function useSavedScholarships() {
         details: error.details,
         hint: error.hint,
       });
-      // 42501 = permission denied — almost always means the JWT wasn't sent (anon role)
       if (error.code === "42501") {
-        return { error: "Session error — please sign out and sign back in, then try again." };
+        return { error: "Permission denied — your session may have expired. Sign out and sign back in." };
       }
       return { error: error.message };
     }
 
-    console.log("[useSavedScholarships] save: success", data);
+    console.log("[useSavedScholarships] save: success →", data);
     setSavedIds((prev) => new Set([...prev, scholarship.id]));
     setSaved((prev) => {
       if (prev.some((r) => r.scholarship_id === scholarship.id)) return prev;
@@ -162,19 +119,16 @@ export function useSavedScholarships() {
   const unsave = useCallback(async (scholarshipId: string): Promise<{ error: string | null }> => {
     if (!user) return { error: "not_logged_in" };
 
-    const session = await validateAndRefreshSession();
-    if (session.error) return { error: session.error };
-
-    console.log("[useSavedScholarships] unsave:", scholarshipId, "for user:", session.uid);
+    console.log("[useSavedScholarships] unsave:", scholarshipId, "for user:", user.id);
 
     const { error } = await supabase
       .from("saved_scholarships")
       .delete()
-      .eq("user_id", session.uid)
+      .eq("user_id", user.id)
       .eq("scholarship_id", scholarshipId);
 
     if (error) {
-      console.error("[useSavedScholarships] unsave error:", { message: error.message, code: error.code });
+      console.error("[useSavedScholarships] unsave error:", error.message, "code:", error.code);
       return { error: error.message };
     }
 
@@ -184,7 +138,7 @@ export function useSavedScholarships() {
     return { error: null };
   }, [user]);
 
-  const isSaved = useCallback((scholarshipId: string) => savedIds.has(scholarshipId), [savedIds]);
+  const isSaved = useCallback((id: string) => savedIds.has(id), [savedIds]);
 
   return { saved, loading, save, unsave, isSaved, refetch: fetchSaved };
 }
