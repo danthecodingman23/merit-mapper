@@ -111,8 +111,8 @@ router.post("/scholarships/save", async (req, res) => {
   }
 });
 
-/** DELETE /api/scholarships/save/:scholarshipId */
-router.delete("/scholarships/save/:scholarshipId", async (req, res) => {
+/** DELETE /api/scholarships/unsave — body: { scholarship_id } */
+router.delete("/scholarships/unsave", async (req, res) => {
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     res.status(503).json({ error: "Supabase not configured on the server" });
     return;
@@ -130,13 +130,17 @@ router.delete("/scholarships/save/:scholarshipId", async (req, res) => {
     return;
   }
 
-  const { scholarshipId } = req.params;
+  const { scholarship_id } = req.body as { scholarship_id?: string };
+  if (!scholarship_id) {
+    res.status(400).json({ error: "scholarship_id is required" });
+    return;
+  }
 
-  req.log.info({ scholarshipId, user_id: user.id }, "[scholarships] unsave — deleting");
+  req.log.info({ scholarship_id, user_id: user.id }, "[scholarships] unsave — deleting");
 
   try {
     const deleteRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/saved_scholarships?user_id=eq.${user.id}&scholarship_id=eq.${encodeURIComponent(scholarshipId)}`,
+      `${SUPABASE_URL}/rest/v1/saved_scholarships?user_id=eq.${user.id}&scholarship_id=eq.${encodeURIComponent(scholarship_id)}`,
       {
         method: "DELETE",
         headers: baseHeaders(token),
@@ -150,7 +154,7 @@ router.delete("/scholarships/save/:scholarshipId", async (req, res) => {
       return;
     }
 
-    req.log.info({ scholarshipId }, "[scholarships] unsave — success");
+    req.log.info({ scholarship_id }, "[scholarships] unsave — success");
     res.json({ success: true });
   } catch (err) {
     logger.error({ err }, "[scholarships] unsave — unexpected error");

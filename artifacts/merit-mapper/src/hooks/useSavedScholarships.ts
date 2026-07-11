@@ -134,10 +134,9 @@ export function useSavedScholarships() {
 
     console.log("[useSavedScholarships] unsave — calling API for scholarship:", scholarshipId);
 
-    const { error, status } = await api(
-      "DELETE",
-      `/api/scholarships/save/${encodeURIComponent(scholarshipId)}`,
-    );
+    const { error, status } = await api("DELETE", "/api/scholarships/unsave", {
+      scholarship_id: scholarshipId,
+    });
 
     if (error) {
       console.error("[useSavedScholarships] unsave error:", error, "status:", status);

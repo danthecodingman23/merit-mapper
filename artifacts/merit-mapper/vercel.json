@@ -4,9 +4,10 @@
   "outputDirectory": "dist/public",
   "framework": null,
   "functions": {
-    "api/match.js": {
-      "maxDuration": 60
-    }
+    "api/match.js": { "maxDuration": 60 },
+    "api/scholarships/save.js": { "maxDuration": 10 },
+    "api/scholarships/saved.js": { "maxDuration": 10 },
+    "api/scholarships/unsave.js": { "maxDuration": 10 }
   },
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
