@@ -11,46 +11,47 @@ export interface SavedScholarship {
   saved_at: string;
 }
 
-/** Returns the current access token, refreshing if the JWT is within 60 s of expiry. */
-async function getValidAccessToken(): Promise<{ token: string; error: null } | { token: null; error: string }> {
-  const { data: { session }, error } = await supabase.auth.getSession();
+/** Returns the current access token from the local session — no network call. */
+async function getAccessToken(): Promise<string | null> {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token ?? null;
+}
 
-  if (error || !session) {
-    console.error("[getValidAccessToken] getSession failed:", error?.message ?? "no session");
-    return { token: null, error: "No active session. Please sign in." };
+/** Call the server-side scholarships API.
+ *  All auth validation happens on the server — no client-side Supabase writes.
+ */
+async function api(
+  method: "GET" | "POST" | "DELETE",
+  path: string,
+  body?: object,
+): Promise<{ data?: unknown; error?: string; status: number }> {
+  const token = await getAccessToken();
+  if (!token) {
+    return { error: "Please sign in to continue.", status: 401 };
   }
 
-  const now = Math.floor(Date.now() / 1000);
-  const expiresAt = session.expires_at ?? 0;
-  const secondsLeft = expiresAt - now;
+  const res = await fetch(path, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+  });
 
-  console.log(
-    "[getValidAccessToken] user:", session.user.id,
-    "| token prefix:", session.access_token.slice(0, 16) + "…",
-    "| expires:", new Date(expiresAt * 1000).toISOString(),
-    "| seconds left:", secondsLeft,
-  );
-
-  // If JWT is expired or about to expire, try a refresh.
-  if (secondsLeft <= 60) {
-    console.warn("[getValidAccessToken] JWT near/past expiry — attempting refresh");
-    try {
-      const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession();
-      if (refreshErr || !refreshed.session) {
-        console.error("[getValidAccessToken] refresh failed:", refreshErr?.message ?? "no session returned");
-        // Sign out locally so stale session doesn't persist.
-        await supabase.auth.signOut({ scope: "local" });
-        return { token: null, error: "session_expired" };
-      }
-      console.log("[getValidAccessToken] refresh succeeded — new expiry:", new Date((refreshed.session.expires_at ?? 0) * 1000).toISOString());
-      return { token: refreshed.session.access_token, error: null };
-    } catch (e) {
-      console.error("[getValidAccessToken] refresh threw:", e);
-      return { token: null, error: "session_expired" };
-    }
+  let payload: Record<string, unknown> = {};
+  try {
+    payload = await res.json() as Record<string, unknown>;
+  } catch {
+    // empty body (e.g. 204)
   }
 
-  return { token: session.access_token, error: null };
+  if (!res.ok) {
+    const msg = (payload.error as string | undefined) ?? `Request failed (${res.status})`;
+    return { error: msg, status: res.status };
+  }
+
+  return { data: payload.data ?? payload, status: res.status };
 }
 
 export function useSavedScholarships() {
@@ -65,21 +66,17 @@ export function useSavedScholarships() {
       setSavedIds(new Set());
       return;
     }
-    console.log("[useSavedScholarships] fetchSaved for user:", user.id);
     setLoading(true);
+    console.log("[useSavedScholarships] fetchSaved for user:", user.id);
     try {
-      const { data, error } = await supabase
-        .from("saved_scholarships")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("saved_at", { ascending: false });
-
+      const { data, error, status } = await api("GET", "/api/scholarships/saved");
       if (error) {
-        console.error("[useSavedScholarships] fetchSaved error:", error.message, "code:", error.code);
+        console.error("[useSavedScholarships] fetchSaved error:", error, "status:", status);
       } else {
-        console.log("[useSavedScholarships] fetchSaved: got", data?.length ?? 0, "rows");
-        setSaved(data ?? []);
-        setSavedIds(new Set((data ?? []).map((r) => r.scholarship_id)));
+        const rows = data as SavedScholarship[];
+        console.log("[useSavedScholarships] fetchSaved: got", rows.length, "rows");
+        setSaved(rows);
+        setSavedIds(new Set(rows.map((r) => r.scholarship_id)));
       }
     } finally {
       setLoading(false);
@@ -96,46 +93,30 @@ export function useSavedScholarships() {
     amount?: number | null;
     application_url?: string | null;
   }): Promise<{ error: string | null }> => {
-    if (!user) {
-      console.warn("[useSavedScholarships] save: no user");
-      return { error: "not_logged_in" };
-    }
+    if (!user) return { error: "not_logged_in" };
 
-    const auth = await getValidAccessToken();
-    if (auth.error) return { error: auth.error };
+    console.log("[useSavedScholarships] save — calling API for scholarship:", scholarship.id);
 
-    const row = {
-      user_id: user.id,
+    const { error, status } = await api("POST", "/api/scholarships/save", {
       scholarship_id: scholarship.id,
       scholarship_name: scholarship.name,
       amount: scholarship.amount ?? null,
       application_url: scholarship.application_url ?? null,
-    };
-    console.log("[useSavedScholarships] save — inserting:", row);
-
-    const { data, error } = await supabase
-      .from("saved_scholarships")
-      .upsert(row, { onConflict: "user_id,scholarship_id" })
-      .select();
+    });
 
     if (error) {
-      console.error("[useSavedScholarships] save error:", {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint,
-      });
-      if (error.code === "42501") return { error: "session_expired" };
-      return { error: error.message };
+      console.error("[useSavedScholarships] save error:", error, "status:", status);
+      if (status === 401) return { error: "session_expired" };
+      return { error };
     }
 
-    console.log("[useSavedScholarships] save: success →", data);
+    console.log("[useSavedScholarships] save: success");
     setSavedIds((prev) => new Set([...prev, scholarship.id]));
     setSaved((prev) => {
       if (prev.some((r) => r.scholarship_id === scholarship.id)) return prev;
       return [
         {
-          id: (data?.[0]?.id as string) ?? crypto.randomUUID(),
+          id: crypto.randomUUID(),
           scholarship_id: scholarship.id,
           scholarship_name: scholarship.name,
           amount: scholarship.amount ?? null,
@@ -151,21 +132,17 @@ export function useSavedScholarships() {
   const unsave = useCallback(async (scholarshipId: string): Promise<{ error: string | null }> => {
     if (!user) return { error: "not_logged_in" };
 
-    const auth = await getValidAccessToken();
-    if (auth.error) return { error: auth.error };
+    console.log("[useSavedScholarships] unsave — calling API for scholarship:", scholarshipId);
 
-    console.log("[useSavedScholarships] unsave:", scholarshipId, "for user:", user.id);
-
-    const { error } = await supabase
-      .from("saved_scholarships")
-      .delete()
-      .eq("user_id", user.id)
-      .eq("scholarship_id", scholarshipId);
+    const { error, status } = await api(
+      "DELETE",
+      `/api/scholarships/save/${encodeURIComponent(scholarshipId)}`,
+    );
 
     if (error) {
-      console.error("[useSavedScholarships] unsave error:", error.message, "code:", error.code);
-      if (error.code === "42501") return { error: "session_expired" };
-      return { error: error.message };
+      console.error("[useSavedScholarships] unsave error:", error, "status:", status);
+      if (status === 401) return { error: "session_expired" };
+      return { error };
     }
 
     console.log("[useSavedScholarships] unsave: success");
