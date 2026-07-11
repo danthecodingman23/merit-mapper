@@ -1,5 +1,8 @@
-import { Link } from "wouter";
+import { useState } from "react";
+import { Link, useLocation } from "wouter";
 import { useMatch, type RankedScholarship } from "@/context/MatchContext";
+import { useAuth } from "@/context/AuthContext";
+import { useSavedScholarships } from "@/hooks/useSavedScholarships";
 
 function scoreBadge(score: number) {
   if (score >= 80)
@@ -42,11 +45,46 @@ function ScoreRing({ score }: { score: number }) {
   );
 }
 
-function ScholarshipCard({ s }: { s: RankedScholarship }) {
+function BookmarkIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <path
+        d="M3 2h8a1 1 0 0 1 1 1v9l-5-3-5 3V3a1 1 0 0 1 1-1z"
+        stroke={filled ? "#2563eb" : "currentColor"}
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+        fill={filled ? "#2563eb" : "none"}
+      />
+    </svg>
+  );
+}
+
+function ScholarshipCard({
+  s,
+  isSaved,
+  onSave,
+  onUnsave,
+}: {
+  s: RankedScholarship;
+  isSaved: boolean;
+  onSave: () => void;
+  onUnsave: () => void;
+}) {
   const badge = scoreBadge(s.result.match_score ?? 0);
   const urgency = URGENCY[s.result.deadline_urgency] ?? URGENCY.low;
   const matchedCriteria: string[] = Array.isArray(s.result.matched_criteria) ? s.result.matched_criteria : [];
   const missingCriteria: string[] = Array.isArray(s.result.missing_criteria) ? s.result.missing_criteria : [];
+  const [saving, setSaving] = useState(false);
+
+  const handleSaveToggle = async () => {
+    setSaving(true);
+    if (isSaved) {
+      await onUnsave();
+    } else {
+      await onSave();
+    }
+    setSaving(false);
+  };
 
   return (
     <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-sm overflow-hidden">
@@ -148,7 +186,7 @@ function ScholarshipCard({ s }: { s: RankedScholarship }) {
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-3.5 border-t border-[#f1f5f9] flex items-center justify-between gap-3">
+      <div className="px-5 py-3.5 border-t border-[#f1f5f9] flex items-center gap-3">
         {s.application_url ? (
           <a
             href={s.application_url}
@@ -164,8 +202,22 @@ function ScholarshipCard({ s }: { s: RankedScholarship }) {
         ) : (
           <span className="text-xs text-[#94a3b8]">No application link available</span>
         )}
+
+        <button
+          onClick={handleSaveToggle}
+          disabled={saving}
+          className={`inline-flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg border transition-all duration-150 disabled:opacity-50 ${
+            isSaved
+              ? "text-[#2563eb] border-[#bfdbfe] bg-[#eff6ff] hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+              : "text-[#475569] border-[#e2e8f0] hover:border-[#2563eb] hover:text-[#2563eb] hover:bg-[#eff6ff]"
+          }`}
+        >
+          <BookmarkIcon filled={isSaved} />
+          {saving ? "…" : isSaved ? "Saved" : "Save"}
+        </button>
+
         {s.amount != null && (
-          <span className="text-xs text-[#94a3b8]">Up to ${s.amount.toLocaleString()}</span>
+          <span className="ml-auto text-xs text-[#94a3b8]">Up to ${s.amount.toLocaleString()}</span>
         )}
       </div>
     </div>
@@ -174,24 +226,47 @@ function ScholarshipCard({ s }: { s: RankedScholarship }) {
 
 export default function Results() {
   const { ranked } = useMatch();
+  const { user } = useAuth();
+  const [, navigate] = useLocation();
+  const { isSaved, save, unsave } = useSavedScholarships();
 
   const strong = ranked.filter((s) => s.result.match_score >= 80);
   const moderate = ranked.filter((s) => s.result.match_score >= 50 && s.result.match_score < 80);
   const weak = ranked.filter((s) => s.result.match_score < 50);
+
+  const handleSave = async (s: RankedScholarship) => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    await save({ id: s.id, name: s.name, amount: s.amount, application_url: s.application_url });
+  };
 
   return (
     <div className="min-h-screen bg-[#f8f7f4] py-10 px-4">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <Link href="/profile">
-            <button className="text-sm font-medium text-[#2563eb] hover:text-[#1d4ed8] transition-colors flex items-center gap-1.5">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M11 7H3M3 7L7 3M3 7L7 11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              Edit profile
-            </button>
-          </Link>
+          <div className="flex items-center justify-between">
+            <Link href="/profile">
+              <button className="text-sm font-medium text-[#2563eb] hover:text-[#1d4ed8] transition-colors flex items-center gap-1.5">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M11 7H3M3 7L7 3M3 7L7 11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Edit profile
+              </button>
+            </Link>
+            {user && (
+              <Link href="/saved">
+                <button className="text-sm font-medium text-[#475569] hover:text-[#1a1a2e] transition-colors flex items-center gap-1.5">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M3 2h8a1 1 0 0 1 1 1v9l-5-3-5 3V3a1 1 0 0 1 1-1z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+                  </svg>
+                  Saved
+                </button>
+              </Link>
+            )}
+          </div>
           <h1 className="text-2xl font-bold text-[#1a1a2e] mt-4 mb-1">Your scholarship matches</h1>
           <p className="text-sm text-[#64748b]">
             {ranked.length === 0
@@ -235,7 +310,13 @@ export default function Results() {
         ) : (
           <div className="space-y-4">
             {ranked.map((s) => (
-              <ScholarshipCard key={s.id} s={s} />
+              <ScholarshipCard
+                key={s.id}
+                s={s}
+                isSaved={isSaved(s.id)}
+                onSave={() => handleSave(s)}
+                onUnsave={() => unsave(s.id)}
+              />
             ))}
           </div>
         )}
