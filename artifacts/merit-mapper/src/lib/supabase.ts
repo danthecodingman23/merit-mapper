@@ -1,27 +1,22 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 
-let _client: SupabaseClient | null = null;
+const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-export function getSupabaseClient(): SupabaseClient {
-  if (_client) return _client;
-
-  const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
-
-  if (!url || !key) {
-    throw new Error(
-      "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.",
-    );
-  }
-
-  _client = createClient(url, key);
-  return _client;
+if (!url || !key) {
+  throw new Error(
+    "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.",
+  );
 }
 
-// Proxy so callers can write `supabase.auth.signIn(...)` as before.
-// The real client is only created on first property access.
-export const supabase = new Proxy({} as SupabaseClient, {
-  get(_target, prop) {
-    return (getSupabaseClient() as unknown as Record<string | symbol, unknown>)[prop];
+// Single shared client — created once at module load, never recreated.
+// No Proxy wrapper: supabase-js internal methods (especially the auth fetch
+// interceptor that injects the JWT) rely on `this` being the real SupabaseClient.
+// A Proxy changes the `this` receiver and can silently break session injection.
+export const supabase = createClient(url, key, {
+  auth: {
+    persistSession: true,      // save session to localStorage
+    autoRefreshToken: true,    // refresh JWT automatically before expiry
+    detectSessionInUrl: true,  // pick up sessions from email confirmation links
   },
 });
