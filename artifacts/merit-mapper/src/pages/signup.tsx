@@ -9,6 +9,7 @@ export default function Signup() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,25 +25,81 @@ export default function Signup() {
     }
 
     setLoading(true);
+    console.log("[signup] Attempting signUp for:", email);
 
-    const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
+    try {
+      const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
 
-    if (signUpError) {
-      setError(signUpError.message);
+      console.log("[signup] signUp result — user:", data?.user?.id ?? null, "session:", !!data?.session, "error:", signUpError?.message ?? null);
+
+      if (signUpError) {
+        setError(signUpError.message);
+        setLoading(false);
+        return;
+      }
+
+      if (!data.user) {
+        setError("Signup failed — no user returned. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      if (!data.session) {
+        console.log("[signup] No session — email confirmation required");
+        setNeedsConfirmation(true);
+        setLoading(false);
+        return;
+      }
+
+      console.log("[signup] Session active — navigating to /profile");
+      navigate("/profile");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Network error — check your connection and try again.";
+      console.error("[signup] Unexpected error:", err);
+      setError(msg);
       setLoading(false);
-      return;
     }
-
-    if (data.user) {
-      await supabase.from("profiles").upsert({
-        id: data.user.id,
-        email: data.user.email,
-        created_at: new Date().toISOString(),
-      });
-    }
-
-    navigate("/profile");
   };
+
+  if (needsConfirmation) {
+    return (
+      <div className="min-h-screen flex flex-col bg-[#f8f7f4]">
+        <header className="px-6 py-5 flex items-center justify-between max-w-6xl mx-auto w-full">
+          <Link href="/">
+            <div className="flex items-center gap-2 cursor-pointer">
+              <div className="w-7 h-7 rounded-md bg-[#2563eb] flex items-center justify-center">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M8 2L14 5.5V10.5L8 14L2 10.5V5.5L8 2Z" fill="white" fillOpacity="0.9" />
+                  <circle cx="8" cy="8" r="2" fill="white" />
+                </svg>
+              </div>
+              <span className="font-semibold text-[#1a1a2e] tracking-tight text-[15px]">MeritMapper</span>
+            </div>
+          </Link>
+        </header>
+        <main className="flex-1 flex items-center justify-center px-6 py-12">
+          <div className="w-full max-w-sm text-center">
+            <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-sm p-8">
+              <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M20 6L9 17l-5-5" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <h1 className="text-xl font-bold text-[#1a1a2e] mb-2">Check your email</h1>
+              <p className="text-sm text-[#64748b] mb-6">
+                We sent a confirmation link to <strong className="text-[#1a1a2e]">{email}</strong>. Click it to activate your account, then sign in.
+              </p>
+              <Link href="/login">
+                <button className="w-full bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-semibold py-2.5 rounded-xl text-sm transition-all">
+                  Go to sign in
+                </button>
+              </Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-[#f8f7f4]">
@@ -73,9 +130,7 @@ export default function Signup() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-[#374151] mb-1.5">
-                  Email
-                </label>
+                <label className="block text-sm font-medium text-[#374151] mb-1.5">Email</label>
                 <input
                   type="email"
                   required
@@ -87,9 +142,7 @@ export default function Signup() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#374151] mb-1.5">
-                  Password
-                </label>
+                <label className="block text-sm font-medium text-[#374151] mb-1.5">Password</label>
                 <input
                   type="password"
                   required
@@ -101,9 +154,7 @@ export default function Signup() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#374151] mb-1.5">
-                  Confirm password
-                </label>
+                <label className="block text-sm font-medium text-[#374151] mb-1.5">Confirm password</label>
                 <input
                   type="password"
                   required
