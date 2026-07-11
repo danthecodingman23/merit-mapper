@@ -23,39 +23,17 @@ function ScoreRing({ score }: { score: number }) {
   const circ = 2 * Math.PI * r;
   const dash = (score / 100) * circ;
   const color = score >= 80 ? "#16a34a" : score >= 50 ? "#d97706" : "#94a3b8";
-
   return (
     <div className="relative w-14 h-14 flex-shrink-0">
       <svg viewBox="0 0 56 56" className="w-full h-full -rotate-90">
         <circle cx="28" cy="28" r={r} fill="none" stroke="#e2e8f0" strokeWidth="5" />
-        <circle
-          cx="28" cy="28" r={r} fill="none"
-          stroke={color} strokeWidth="5"
-          strokeDasharray={`${dash} ${circ}`}
-          strokeLinecap="round"
-        />
+        <circle cx="28" cy="28" r={r} fill="none" stroke={color} strokeWidth="5"
+          strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" />
       </svg>
-      <span
-        className="absolute inset-0 flex items-center justify-center text-sm font-bold"
-        style={{ color }}
-      >
+      <span className="absolute inset-0 flex items-center justify-center text-sm font-bold" style={{ color }}>
         {score}
       </span>
     </div>
-  );
-}
-
-function BookmarkIcon({ filled }: { filled: boolean }) {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <path
-        d="M3 2h8a1 1 0 0 1 1 1v9l-5-3-5 3V3a1 1 0 0 1 1-1z"
-        stroke={filled ? "#2563eb" : "currentColor"}
-        strokeWidth="1.4"
-        strokeLinejoin="round"
-        fill={filled ? "#2563eb" : "none"}
-      />
-    </svg>
   );
 }
 
@@ -67,21 +45,34 @@ function ScholarshipCard({
 }: {
   s: RankedScholarship;
   isSaved: boolean;
-  onSave: () => void;
-  onUnsave: () => void;
+  onSave: () => Promise<{ error: string | null }>;
+  onUnsave: () => Promise<{ error: string | null }>;
 }) {
   const badge = scoreBadge(s.result.match_score ?? 0);
   const urgency = URGENCY[s.result.deadline_urgency] ?? URGENCY.low;
   const matchedCriteria: string[] = Array.isArray(s.result.matched_criteria) ? s.result.matched_criteria : [];
   const missingCriteria: string[] = Array.isArray(s.result.missing_criteria) ? s.result.missing_criteria : [];
+
   const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
 
   const handleSaveToggle = async () => {
     setSaving(true);
-    if (isSaved) {
-      await onUnsave();
-    } else {
-      await onSave();
+    setFeedback(null);
+    console.log("[ScholarshipCard] save toggle — isSaved:", isSaved, "scholarship:", s.id, s.name);
+    try {
+      const result = isSaved ? await onUnsave() : await onSave();
+      if (result.error) {
+        console.error("[ScholarshipCard] operation failed:", result.error);
+        setFeedback({ type: "error", msg: result.error });
+      } else {
+        setFeedback({ type: "success", msg: isSaved ? "Removed from saved" : "Scholarship saved!" });
+        setTimeout(() => setFeedback(null), 3000);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unexpected error";
+      console.error("[ScholarshipCard] unexpected error:", err);
+      setFeedback({ type: "error", msg });
     }
     setSaving(false);
   };
@@ -93,9 +84,7 @@ function ScholarshipCard({
         <ScoreRing score={s.result.match_score} />
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-0.5">
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${badge.bg}`}>
-              {badge.label}
-            </span>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${badge.bg}`}>{badge.label}</span>
             {s.result.deadline_urgency === "high" && (
               <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${urgency.chip}`}>
                 ⚠ {urgency.label}
@@ -107,7 +96,7 @@ function ScholarshipCard({
         </div>
       </div>
 
-      {/* Meta row */}
+      {/* Meta */}
       <div className="px-5 pb-4 flex flex-wrap gap-3">
         {s.amount != null && (
           <div className="flex items-center gap-1.5 text-sm">
@@ -125,14 +114,10 @@ function ScholarshipCard({
               <path d="M1 6h12M4 1v2M10 1v2" stroke="#64748b" strokeWidth="1.4" strokeLinecap="round"/>
             </svg>
             <span className="text-[#475569]">
-              {new Date(s.deadline).toLocaleDateString("en-US", {
-                month: "short", day: "numeric", year: "numeric",
-              })}
+              {new Date(s.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
             </span>
             {s.result.deadline_urgency !== "high" && (
-              <span className={`text-xs px-1.5 py-0.5 rounded-full border ${urgency.chip}`}>
-                {urgency.label}
-              </span>
+              <span className={`text-xs px-1.5 py-0.5 rounded-full border ${urgency.chip}`}>{urgency.label}</span>
             )}
           </div>
         )}
@@ -149,9 +134,7 @@ function ScholarshipCard({
       <div className="px-5 pb-5 space-y-3">
         {matchedCriteria.length > 0 && (
           <div>
-            <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-1.5">
-              Why you match
-            </p>
+            <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-1.5">Why you match</p>
             <div className="flex flex-wrap gap-1.5">
               {matchedCriteria.map((c) => (
                 <span key={c} className="text-xs bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -164,12 +147,9 @@ function ScholarshipCard({
             </div>
           </div>
         )}
-
         {missingCriteria.length > 0 && (
           <div>
-            <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-1.5">
-              Gaps to be aware of
-            </p>
+            <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-1.5">Gaps to be aware of</p>
             <div className="flex flex-wrap gap-1.5">
               {missingCriteria.map((c) => (
                 <span key={c} className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -186,38 +166,58 @@ function ScholarshipCard({
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-3.5 border-t border-[#f1f5f9] flex items-center gap-3">
-        {s.application_url ? (
-          <a
-            href={s.application_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all duration-150 shadow-sm hover:shadow"
+      <div className="px-5 py-3.5 border-t border-[#f1f5f9] flex flex-col gap-2">
+        <div className="flex items-center gap-3">
+          {s.application_url ? (
+            <a
+              href={s.application_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all duration-150 shadow-sm hover:shadow"
+            >
+              Apply now
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2 10L10 2M10 2H5M10 2v5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </a>
+          ) : (
+            <span className="text-xs text-[#94a3b8]">No application link available</span>
+          )}
+
+          <button
+            onClick={handleSaveToggle}
+            disabled={saving}
+            className={`inline-flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg border transition-all duration-150 disabled:opacity-50 ${
+              isSaved
+                ? "text-[#2563eb] border-[#bfdbfe] bg-[#eff6ff] hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                : "text-[#475569] border-[#e2e8f0] hover:border-[#2563eb] hover:text-[#2563eb] hover:bg-[#eff6ff]"
+            }`}
           >
-            Apply now
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M2 10L10 2M10 2H5M10 2v5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path
+                d="M3 2h8a1 1 0 0 1 1 1v9l-5-3-5 3V3a1 1 0 0 1 1-1z"
+                stroke={isSaved ? "#2563eb" : "currentColor"}
+                strokeWidth="1.4"
+                strokeLinejoin="round"
+                fill={isSaved ? "#2563eb" : "none"}
+              />
             </svg>
-          </a>
-        ) : (
-          <span className="text-xs text-[#94a3b8]">No application link available</span>
-        )}
+            {saving ? "…" : isSaved ? "Saved" : "Save"}
+          </button>
 
-        <button
-          onClick={handleSaveToggle}
-          disabled={saving}
-          className={`inline-flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg border transition-all duration-150 disabled:opacity-50 ${
-            isSaved
-              ? "text-[#2563eb] border-[#bfdbfe] bg-[#eff6ff] hover:bg-red-50 hover:text-red-600 hover:border-red-200"
-              : "text-[#475569] border-[#e2e8f0] hover:border-[#2563eb] hover:text-[#2563eb] hover:bg-[#eff6ff]"
-          }`}
-        >
-          <BookmarkIcon filled={isSaved} />
-          {saving ? "…" : isSaved ? "Saved" : "Save"}
-        </button>
+          {s.amount != null && (
+            <span className="ml-auto text-xs text-[#94a3b8]">Up to ${s.amount.toLocaleString()}</span>
+          )}
+        </div>
 
-        {s.amount != null && (
-          <span className="ml-auto text-xs text-[#94a3b8]">Up to ${s.amount.toLocaleString()}</span>
+        {feedback && (
+          <div className={`text-xs font-medium px-3 py-1.5 rounded-lg ${
+            feedback.type === "success"
+              ? "bg-green-50 text-green-700 border border-green-200"
+              : "bg-red-50 text-red-600 border border-red-200"
+          }`}>
+            {feedback.type === "success" ? "✓ " : "✗ "}{feedback.msg}
+          </div>
         )}
       </div>
     </div>
@@ -234,18 +234,24 @@ export default function Results() {
   const moderate = ranked.filter((s) => s.result.match_score >= 50 && s.result.match_score < 80);
   const weak = ranked.filter((s) => s.result.match_score < 50);
 
-  const handleSave = async (s: RankedScholarship) => {
+  const handleSave = async (s: RankedScholarship): Promise<{ error: string | null }> => {
     if (!user) {
+      console.log("[Results] handleSave: no user, redirecting to login");
       navigate("/login");
-      return;
+      return { error: "Please sign in to save scholarships." };
     }
-    await save({ id: s.id, name: s.name, amount: s.amount, application_url: s.application_url });
+    console.log("[Results] handleSave: saving scholarship", s.id, s.name);
+    return save({ id: s.id, name: s.name, amount: s.amount, application_url: s.application_url });
+  };
+
+  const handleUnsave = async (s: RankedScholarship): Promise<{ error: string | null }> => {
+    console.log("[Results] handleUnsave: unsaving scholarship", s.id);
+    return unsave(s.id);
   };
 
   return (
     <div className="min-h-screen bg-[#f8f7f4] py-10 px-4">
       <div className="max-w-2xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <Link href="/profile">
@@ -273,7 +279,6 @@ export default function Results() {
               ? "No results yet — go back and submit your profile."
               : `${ranked.length} scholarship${ranked.length !== 1 ? "s" : ""} ranked by fit`}
           </p>
-
           {ranked.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-3">
               {strong.length > 0 && (
@@ -315,7 +320,7 @@ export default function Results() {
                 s={s}
                 isSaved={isSaved(s.id)}
                 onSave={() => handleSave(s)}
-                onUnsave={() => unsave(s.id)}
+                onUnsave={() => handleUnsave(s)}
               />
             ))}
           </div>

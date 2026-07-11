@@ -19,10 +19,12 @@ export function useSavedScholarships() {
 
   const fetchSaved = useCallback(async () => {
     if (!user) {
+      console.log("[useSavedScholarships] fetchSaved: no user, skipping");
       setSaved([]);
       setSavedIds(new Set());
       return;
     }
+    console.log("[useSavedScholarships] fetchSaved: user_id =", user.id);
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -32,8 +34,14 @@ export function useSavedScholarships() {
         .order("saved_at", { ascending: false });
 
       if (error) {
-        console.error("[useSavedScholarships] fetch error:", error.message);
+        console.error("[useSavedScholarships] fetchSaved error:", {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+        });
       } else {
+        console.log("[useSavedScholarships] fetchSaved: got", data?.length ?? 0, "rows");
         setSaved(data ?? []);
         setSavedIds(new Set((data ?? []).map((r) => r.scholarship_id)));
       }
@@ -51,8 +59,20 @@ export function useSavedScholarships() {
     name: string;
     amount?: number | null;
     application_url?: string | null;
-  }) => {
-    if (!user) return { error: "not_logged_in" };
+  }): Promise<{ error: string | null }> => {
+    if (!user) {
+      console.warn("[useSavedScholarships] save: no user");
+      return { error: "not_logged_in" };
+    }
+
+    // Verify session is still active before inserting
+    const { data: sessionData } = await supabase.auth.getSession();
+    console.log("[useSavedScholarships] save: session active =", !!sessionData?.session, "| user_id =", user.id);
+
+    if (!sessionData?.session) {
+      console.warn("[useSavedScholarships] save: session is null — user may need to sign in again");
+      return { error: "Session expired. Please sign in again." };
+    }
 
     const row = {
       user_id: user.id,
@@ -61,22 +81,31 @@ export function useSavedScholarships() {
       amount: scholarship.amount ?? null,
       application_url: scholarship.application_url ?? null,
     };
+    console.log("[useSavedScholarships] save: inserting row:", row);
 
-    const { error } = await supabase.from("saved_scholarships").upsert(row, {
-      onConflict: "user_id,scholarship_id",
-    });
+    const { data, error } = await supabase
+      .from("saved_scholarships")
+      .upsert(row, { onConflict: "user_id,scholarship_id" })
+      .select();
 
     if (error) {
-      console.error("[useSavedScholarships] save error:", error.message);
+      console.error("[useSavedScholarships] save error:", {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+      });
       return { error: error.message };
     }
+
+    console.log("[useSavedScholarships] save: success, returned rows:", data);
 
     setSavedIds((prev) => new Set([...prev, scholarship.id]));
     setSaved((prev) => {
       if (prev.some((r) => r.scholarship_id === scholarship.id)) return prev;
       return [
         {
-          id: crypto.randomUUID(),
+          id: (data?.[0]?.id as string) ?? crypto.randomUUID(),
           scholarship_id: scholarship.id,
           scholarship_name: scholarship.name,
           amount: scholarship.amount ?? null,
@@ -89,8 +118,12 @@ export function useSavedScholarships() {
     return { error: null };
   }, [user]);
 
-  const unsave = useCallback(async (scholarshipId: string) => {
-    if (!user) return;
+  const unsave = useCallback(async (scholarshipId: string): Promise<{ error: string | null }> => {
+    if (!user) {
+      console.warn("[useSavedScholarships] unsave: no user");
+      return { error: "not_logged_in" };
+    }
+    console.log("[useSavedScholarships] unsave: scholarship_id =", scholarshipId, "| user_id =", user.id);
 
     const { error } = await supabase
       .from("saved_scholarships")
@@ -99,16 +132,23 @@ export function useSavedScholarships() {
       .eq("scholarship_id", scholarshipId);
 
     if (error) {
-      console.error("[useSavedScholarships] unsave error:", error.message);
-      return;
+      console.error("[useSavedScholarships] unsave error:", {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+      });
+      return { error: error.message };
     }
 
+    console.log("[useSavedScholarships] unsave: success");
     setSavedIds((prev) => {
       const next = new Set(prev);
       next.delete(scholarshipId);
       return next;
     });
     setSaved((prev) => prev.filter((r) => r.scholarship_id !== scholarshipId));
+    return { error: null };
   }, [user]);
 
   const isSaved = useCallback((scholarshipId: string) => savedIds.has(scholarshipId), [savedIds]);
