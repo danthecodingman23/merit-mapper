@@ -2,14 +2,17 @@ const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-/** Validate the user's JWT and return their user ID. Uses anon key for auth check. */
+// Startup diagnostics — logs appear in Vercel Function logs
+console.log("[save] env check —",
+  "SUPABASE_URL:", SUPABASE_URL ? "set" : "MISSING",
+  "SUPABASE_ANON_KEY:", SUPABASE_ANON_KEY ? "set" : "MISSING",
+  "SERVICE_KEY prefix:", SUPABASE_SERVICE_KEY ? SUPABASE_SERVICE_KEY.slice(0, 10) + "..." : "MISSING"
+);
+
 async function getUserId(jwt) {
   try {
     const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: {
-        "apikey": SUPABASE_ANON_KEY,
-        "Authorization": `Bearer ${jwt}`,
-      },
+      headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${jwt}` },
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -19,7 +22,6 @@ async function getUserId(jwt) {
   }
 }
 
-/** Headers for Supabase REST DB calls — uses service role key to bypass RLS. */
 function dbHeaders() {
   return {
     "Content-Type": "application/json",
@@ -32,9 +34,19 @@ export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_KEY) {
-    console.error("[save] Missing env vars:", { SUPABASE_URL: !!SUPABASE_URL, SUPABASE_ANON_KEY: !!SUPABASE_ANON_KEY, SUPABASE_SERVICE_KEY: !!SUPABASE_SERVICE_KEY });
-    return res.status(503).json({ error: "Server not configured — contact support" });
+
+  // Log key status on every request so we can see it in Vercel Function logs
+  console.log("[save] request — service key loaded:", !!SUPABASE_SERVICE_KEY,
+    SUPABASE_SERVICE_KEY ? `(starts: ${SUPABASE_SERVICE_KEY.slice(0, 10)})` : "(UNDEFINED)"
+  );
+
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    console.error("[save] Supabase URL/anon key missing");
+    return res.status(503).json({ error: "Server not configured — Supabase URL/key missing" });
+  }
+  if (!SUPABASE_SERVICE_KEY) {
+    console.error("[save] SUPABASE_SERVICE_ROLE_KEY is not set — cannot bypass RLS");
+    return res.status(503).json({ error: "Server not configured — service role key missing. Add SUPABASE_SERVICE_ROLE_KEY to Vercel env vars and redeploy." });
   }
 
   const auth = req.headers["authorization"] ?? "";
@@ -61,7 +73,7 @@ export default async function handler(req, res) {
     application_url: application_url ?? null,
   };
 
-  console.log("[save] inserting for user:", userId, "scholarship:", scholarship_id);
+  console.log("[save] inserting — user:", userId, "scholarship:", scholarship_id, "using service key:", SUPABASE_SERVICE_KEY.slice(0, 10) + "...");
 
   try {
     const insertRes = await fetch(
@@ -77,9 +89,11 @@ export default async function handler(req, res) {
     );
 
     const body = await insertRes.json().catch(() => ({}));
+    console.log("[save] DB response:", insertRes.status, JSON.stringify(body).slice(0, 200));
+
     if (!insertRes.ok) {
       console.error("[save] insert failed:", insertRes.status, body);
-      return res.status(insertRes.status).json({ error: body?.message ?? "Save failed" });
+      return res.status(insertRes.status).json({ error: body?.message ?? "Save failed", debug: body });
     }
 
     console.log("[save] success");
