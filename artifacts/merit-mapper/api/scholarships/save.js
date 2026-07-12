@@ -13,6 +13,17 @@ function jwtRole(jwt) {
   }
 }
 
+/** Only store numeric amounts in the integer column — pass null for "Full Tuition" etc. */
+function toNumericAmount(value) {
+  if (value == null) return null;
+  if (typeof value === "number" && Number.isFinite(value)) return Math.round(value);
+  if (typeof value === "string") {
+    const parsed = parseFloat(value.replace(/[^0-9.]/g, ""));
+    return Number.isFinite(parsed) ? Math.round(parsed) : null;
+  }
+  return null;
+}
+
 async function getUserId(jwt) {
   try {
     const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
@@ -31,36 +42,27 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  if (!SUPABASE_URL) {
-    return res.status(503).json({ error: "[DIAG] VITE_SUPABASE_URL not set in Vercel." });
-  }
-  if (!SUPABASE_ANON_KEY) {
-    return res.status(503).json({ error: "[DIAG] VITE_SUPABASE_ANON_KEY not set in Vercel." });
-  }
+  if (!SUPABASE_URL) return res.status(503).json({ error: "[DIAG] VITE_SUPABASE_URL not set in Vercel." });
+  if (!SUPABASE_ANON_KEY) return res.status(503).json({ error: "[DIAG] VITE_SUPABASE_ANON_KEY not set in Vercel." });
   if (!SUPABASE_SERVICE_KEY) {
     return res.status(503).json({
-      error: "[DIAG] SUPABASE_SERVICE_ROLE_KEY not set in Vercel. Add it in Settings → Environment Variables, then Redeploy.",
+      error: "[DIAG] SUPABASE_SERVICE_ROLE_KEY not set — add it in Vercel Settings → Environment Variables, then Redeploy.",
     });
   }
 
-  // Decode the role embedded in the service key JWT
   const serviceKeyRole = jwtRole(SUPABASE_SERVICE_KEY);
   if (serviceKeyRole !== "service_role") {
     return res.status(503).json({
-      error: `[DIAG] Wrong key! SUPABASE_SERVICE_ROLE_KEY contains role="${serviceKeyRole}" — you need role="service_role". In Supabase: Project Settings → API → copy the "service_role" key (NOT the "anon" key), update the Vercel env var, and Redeploy.`,
+      error: `[DIAG] Wrong key: role="${serviceKeyRole}". Need role="service_role". Copy the service_role key (not anon) from Supabase → Project Settings → API.`,
     });
   }
 
   const auth = req.headers["authorization"] ?? "";
-  if (!auth.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Missing Authorization header" });
-  }
+  if (!auth.startsWith("Bearer ")) return res.status(401).json({ error: "Missing Authorization header" });
   const userJwt = auth.slice(7).trim();
 
   const userId = await getUserId(userJwt);
-  if (!userId) {
-    return res.status(401).json({ error: "Invalid or expired session — please sign in again" });
-  }
+  if (!userId) return res.status(401).json({ error: "Invalid or expired session — please sign in again" });
 
   const { scholarship_id, scholarship_name, amount, application_url } = req.body ?? {};
   if (!scholarship_id || !scholarship_name) {
@@ -71,7 +73,7 @@ export default async function handler(req, res) {
     user_id: userId,
     scholarship_id,
     scholarship_name,
-    amount: amount ?? null,
+    amount: toNumericAmount(amount),   // converts "Full Tuition" → null safely
     application_url: application_url ?? null,
   };
 
@@ -95,14 +97,12 @@ export default async function handler(req, res) {
     if (!insertRes.ok) {
       const supaMsg = body?.message ?? body?.error ?? JSON.stringify(body);
       return res.status(insertRes.status).json({
-        error: `[DIAG] DB insert failed (HTTP ${insertRes.status}). Service key role="${serviceKeyRole}". Supabase said: "${supaMsg}"`,
+        error: `[DIAG] DB insert failed (HTTP ${insertRes.status}). Supabase said: "${supaMsg}"`,
       });
     }
 
     return res.status(200).json({ data: body });
   } catch (err) {
-    return res.status(500).json({
-      error: `[DIAG] Network error: ${err?.message ?? String(err)}`,
-    });
+    return res.status(500).json({ error: `[DIAG] Network error: ${err?.message ?? String(err)}` });
   }
 }

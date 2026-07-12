@@ -4,7 +4,7 @@ export interface Scholarship {
   id: string;
   name: string;
   provider: string;
-  amount?: number;
+  amount?: number | string;
   deadline?: string;
   eligibility?: string;
   application_url?: string;

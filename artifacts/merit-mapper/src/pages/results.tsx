@@ -97,7 +97,9 @@ function ScholarshipCard({
               <circle cx="7" cy="7" r="6" stroke="#2563eb" strokeWidth="1.4"/>
               <path d="M7 4v6M5.5 8.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5S8.33 7 7 7 5.5 6.33 5.5 5.5 6.17 4 7 4s1.5.67 1.5 1.5" stroke="#2563eb" strokeWidth="1.2" strokeLinecap="round"/>
             </svg>
-            <span className="font-semibold text-[#1a1a2e]">${s.amount.toLocaleString()}</span>
+            <span className="font-semibold text-[#1a1a2e]">
+              {typeof s.amount === "number" ? `$${s.amount.toLocaleString()}` : s.amount}
+            </span>
           </div>
         )}
         {s.deadline && (
@@ -199,7 +201,9 @@ function ScholarshipCard({
           </button>
 
           {s.amount != null && (
-            <span className="ml-auto text-xs text-[#94a3b8]">Up to ${s.amount.toLocaleString()}</span>
+            <span className="ml-auto text-xs text-[#94a3b8]">
+              {typeof s.amount === "number" ? `Up to $${s.amount.toLocaleString()}` : s.amount}
+            </span>
           )}
         </div>
 

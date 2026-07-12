@@ -11,6 +11,17 @@ export interface SavedScholarship {
   saved_at: string;
 }
 
+/** Convert any amount value to a safe integer for DB storage, or null if non-numeric. */
+function toNumericAmount(amount: number | string | null | undefined): number | null {
+  if (amount == null) return null;
+  if (typeof amount === "number" && Number.isFinite(amount)) return Math.round(amount);
+  if (typeof amount === "string") {
+    const parsed = parseFloat(amount.replace(/[^0-9.]/g, ""));
+    return Number.isFinite(parsed) ? Math.round(parsed) : null;
+  }
+  return null;
+}
+
 /** Returns the current access token from the local session — no network call. */
 async function getAccessToken(): Promise<string | null> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -90,7 +101,7 @@ export function useSavedScholarships() {
   const save = useCallback(async (scholarship: {
     id: string;
     name: string;
-    amount?: number | null;
+    amount?: number | string | null;
     application_url?: string | null;
   }): Promise<{ error: string | null }> => {
     if (!user) return { error: "not_logged_in" };
@@ -100,7 +111,7 @@ export function useSavedScholarships() {
     const { error, status } = await api("POST", "/api/scholarships/save", {
       scholarship_id: scholarship.id,
       scholarship_name: scholarship.name,
-      amount: scholarship.amount ?? null,
+      amount: toNumericAmount(scholarship.amount),
       application_url: scholarship.application_url ?? null,
     });
 
@@ -119,7 +130,7 @@ export function useSavedScholarships() {
           id: crypto.randomUUID(),
           scholarship_id: scholarship.id,
           scholarship_name: scholarship.name,
-          amount: scholarship.amount ?? null,
+          amount: toNumericAmount(scholarship.amount),
           application_url: scholarship.application_url ?? null,
           saved_at: new Date().toISOString(),
         },
