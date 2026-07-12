@@ -38,3 +38,8 @@ externalPort = 80
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVxenh3emlyaXdqeWRxbnJ4eGZlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTk2NDUwOCwiZXhwIjoyMDk1NTQwNTA4fQ.WeCTLQ35sQhjpxo9kNbWtzc6N1OSv7YGMQabndYevCM"
