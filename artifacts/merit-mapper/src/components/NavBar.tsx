@@ -1,14 +1,35 @@
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
 
 export default function NavBar() {
   const { user, signOut } = useAuth();
   const [location, navigate] = useLocation();
+  const [firstName, setFirstName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) { setFirstName(null); return; }
+
+    supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        const name = (data as { full_name?: string | null } | null)?.full_name?.trim();
+        setFirstName(name ? name.split(" ")[0] : null);
+      });
+  }, [user]);
 
   const handleSignOut = async () => {
     await signOut();
     navigate("/login");
   };
+
+  const greeting = firstName
+    ? `Welcome, ${firstName}`
+    : user?.email ?? null;
 
   return (
     <nav className="w-full bg-white border-b border-[#e2e8f0] px-4 py-0">
@@ -56,9 +77,9 @@ export default function NavBar() {
 
           <div className="w-px h-4 bg-[#e2e8f0]" />
 
-          {user && (
-            <span className="text-xs text-[#94a3b8] hidden sm:block max-w-[140px] truncate">
-              {user.email}
+          {greeting && (
+            <span className="text-xs text-[#64748b] hidden sm:block max-w-[180px] truncate">
+              {greeting}
             </span>
           )}
 
