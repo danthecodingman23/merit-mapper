@@ -117,7 +117,11 @@ export default function Profile() {
       <div className="max-w-2xl mx-auto py-10 px-4">
 
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-[#1a1a2e] mb-1">Your profile</h1>
+          <h1 className="text-2xl font-bold text-[#1a1a2e] mb-1">
+            {profile.fullName.trim()
+              ? `Welcome back, ${profile.fullName.trim().split(" ")[0]}!`
+              : "Your profile"}
+          </h1>
           <p className="text-sm text-[#64748b]">Tell us about yourself so we can match you with the right scholarships.</p>
           {saving && (
             <p className="text-xs text-[#94a3b8] mt-1">Saving…</p>
