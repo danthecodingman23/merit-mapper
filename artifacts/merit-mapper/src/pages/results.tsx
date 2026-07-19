@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useMatch, type RankedScholarship } from "@/context/MatchContext";
 import { useAuth } from "@/context/AuthContext";
 import { useSavedScholarships } from "@/hooks/useSavedScholarships";
 import { useReportLink } from "@/hooks/useReportLink";
+import { useScholarshipFeedback, FEEDBACK_REASONS } from "@/hooks/useScholarshipFeedback";
 import NavBar from "@/components/NavBar";
 
 function scoreBadge(score: number) {
@@ -53,6 +54,21 @@ function ScholarshipCard({
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
   const { report, reporting, reported, error: reportError } = useReportLink();
+  const { submit: submitFeedback, submitting: fbSubmitting, submitted: fbSubmitted, error: fbError } = useScholarshipFeedback();
+  const [fitMenuOpen, setFitMenuOpen] = useState(false);
+  const fitMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!fitMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (fitMenuRef.current && !fitMenuRef.current.contains(e.target as Node)) {
+        setFitMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [fitMenuOpen]);
+
   const badge = scoreBadge(s.result.match_score);
   const urgency = URGENCY[s.result.deadline_urgency] ?? URGENCY.low;
   const matchedCriteria = s.result.matched_criteria ?? [];
@@ -216,6 +232,42 @@ function ScholarshipCard({
             </svg>
             {saving ? "…" : isSaved ? "Saved" : "Save"}
           </button>
+
+          {/* Not a Good Fit dropdown */}
+          <div className="relative ml-auto" ref={fitMenuRef}>
+            {fbSubmitted ? (
+              <span className="text-xs text-green-700 font-medium">✓ Got it, thanks!</span>
+            ) : (
+              <button
+                onClick={() => setFitMenuOpen(o => !o)}
+                disabled={fbSubmitting}
+                className="inline-flex items-center gap-1 text-xs font-medium text-[#94a3b8] hover:text-[#475569] disabled:opacity-50 transition-colors"
+              >
+                Not a good fit?
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className={`transition-transform ${fitMenuOpen ? "rotate-180" : ""}`}>
+                  <path d="M2 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            )}
+
+            {fitMenuOpen && !fbSubmitted && (
+              <div className="absolute right-0 bottom-full mb-1.5 w-52 bg-white rounded-xl border border-[#e2e8f0] shadow-lg overflow-hidden z-20">
+                <p className="text-[10px] font-semibold text-[#94a3b8] uppercase tracking-wide px-3 pt-2.5 pb-1">Why isn't this a good fit?</p>
+                {FEEDBACK_REASONS.map(reason => (
+                  <button
+                    key={reason}
+                    onClick={() => {
+                      submitFeedback({ scholarshipId: s.id, scholarshipName: s.name, reason });
+                      setFitMenuOpen(false);
+                    }}
+                    className="w-full text-left text-sm text-[#1a1a2e] hover:bg-[#f8f7f4] px-3 py-2 transition-colors"
+                  >
+                    {reason}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
         </div>
 
