@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { useSavedScholarships } from "@/hooks/useSavedScholarships";
+import { useReportLink } from "@/hooks/useReportLink";
 import NavBar from "@/components/NavBar";
 
 function BookmarkIcon({ filled }: { filled?: boolean }) {
@@ -13,6 +14,84 @@ function BookmarkIcon({ filled }: { filled?: boolean }) {
         fill={filled ? "#2563eb" : "none"}
       />
     </svg>
+  );
+}
+
+function SavedCard({ s, onUnsave }: { s: ReturnType<typeof useSavedScholarships>["saved"][number]; onUnsave: () => void }) {
+  const { report, reporting, reported, error: reportError } = useReportLink();
+  return (
+    <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-sm overflow-hidden">
+      <div className="p-5">
+        <h3 className="font-semibold text-[#1a1a2e] leading-tight">{s.scholarship_name}</h3>
+        {s.amount != null && (
+          <div className="flex items-center gap-1.5 mt-2 text-sm">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <circle cx="7" cy="7" r="6" stroke="#2563eb" strokeWidth="1.4"/>
+              <path d="M7 4v6M5.5 8.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5S8.33 7 7 7 5.5 6.33 5.5 5.5 6.17 4 7 4s1.5.67 1.5 1.5" stroke="#2563eb" strokeWidth="1.2" strokeLinecap="round"/>
+            </svg>
+            <span className="font-semibold text-[#1a1a2e]">${s.amount.toLocaleString()}</span>
+          </div>
+        )}
+        <p className="text-xs text-[#94a3b8] mt-1.5">
+          Saved {new Date(s.saved_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+        </p>
+      </div>
+
+      <div className="px-5 py-3.5 border-t border-[#f1f5f9] flex flex-col gap-2">
+        <div className="flex items-center gap-3 flex-wrap">
+          {s.application_url ? (
+            <a
+              href={s.application_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all duration-150 shadow-sm hover:shadow"
+            >
+              Apply now
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2 10L10 2M10 2H5M10 2v5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </a>
+          ) : (
+            <span className="text-xs text-[#94a3b8]">No application link</span>
+          )}
+
+          <button
+            onClick={onUnsave}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-[#64748b] hover:text-red-600 border border-[#e2e8f0] hover:border-red-200 hover:bg-red-50 px-3 py-2 rounded-lg transition-all duration-150"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            Unsave
+          </button>
+
+          {s.application_url && (
+            <button
+              onClick={() => report({ scholarshipId: s.scholarship_id, scholarshipName: s.scholarship_name, applicationUrl: s.application_url })}
+              disabled={reporting || reported}
+              className="inline-flex items-center gap-1 text-xs font-medium text-[#94a3b8] hover:text-red-500 disabled:opacity-50 disabled:cursor-default transition-colors ml-auto"
+            >
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                <path d="M6 1v5M6 9v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.3"/>
+              </svg>
+              {reported ? "Reported" : reporting ? "Reporting…" : "Report bad link"}
+            </button>
+          )}
+        </div>
+
+        {reported && (
+          <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">
+            ✓ Thanks for reporting this! We'll review it soon.
+          </p>
+        )}
+        {reportError && (
+          <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">
+            ✗ {reportError}
+          </p>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -55,54 +134,7 @@ export default function Saved() {
         ) : (
           <div className="space-y-4">
             {saved.map((s) => (
-              <div
-                key={s.id}
-                className="bg-white rounded-2xl border border-[#e2e8f0] shadow-sm overflow-hidden"
-              >
-                <div className="p-5">
-                  <h3 className="font-semibold text-[#1a1a2e] leading-tight">{s.scholarship_name}</h3>
-                  {s.amount != null && (
-                    <div className="flex items-center gap-1.5 mt-2 text-sm">
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                        <circle cx="7" cy="7" r="6" stroke="#2563eb" strokeWidth="1.4"/>
-                        <path d="M7 4v6M5.5 8.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5S8.33 7 7 7 5.5 6.33 5.5 5.5 6.17 4 7 4s1.5.67 1.5 1.5" stroke="#2563eb" strokeWidth="1.2" strokeLinecap="round"/>
-                      </svg>
-                      <span className="font-semibold text-[#1a1a2e]">${s.amount.toLocaleString()}</span>
-                    </div>
-                  )}
-                  <p className="text-xs text-[#94a3b8] mt-1.5">
-                    Saved {new Date(s.saved_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                  </p>
-                </div>
-
-                <div className="px-5 py-3.5 border-t border-[#f1f5f9] flex items-center gap-3">
-                  {s.application_url ? (
-                    <a
-                      href={s.application_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all duration-150 shadow-sm hover:shadow"
-                    >
-                      Apply now
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                        <path d="M2 10L10 2M10 2H5M10 2v5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </a>
-                  ) : (
-                    <span className="text-xs text-[#94a3b8]">No application link</span>
-                  )}
-
-                  <button
-                    onClick={() => unsave(s.scholarship_id)}
-                    className="inline-flex items-center gap-1.5 text-sm font-medium text-[#64748b] hover:text-red-600 border border-[#e2e8f0] hover:border-red-200 hover:bg-red-50 px-3 py-2 rounded-lg transition-all duration-150"
-                  >
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                      <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                    </svg>
-                    Unsave
-                  </button>
-                </div>
-              </div>
+              <SavedCard key={s.id} s={s} onUnsave={() => unsave(s.scholarship_id)} />
             ))}
           </div>
         )}

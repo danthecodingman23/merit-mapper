@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useMatch, type RankedScholarship } from "@/context/MatchContext";
 import { useAuth } from "@/context/AuthContext";
 import { useSavedScholarships } from "@/hooks/useSavedScholarships";
+import { useReportLink } from "@/hooks/useReportLink";
 import NavBar from "@/components/NavBar";
 
 function scoreBadge(score: number) {
@@ -51,6 +52,7 @@ function ScholarshipCard({
 }) {
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const { report, reporting, reported, error: reportError } = useReportLink();
   const badge = scoreBadge(s.result.match_score);
   const urgency = URGENCY[s.result.deadline_urgency] ?? URGENCY.low;
   const matchedCriteria = s.result.matched_criteria ?? [];
@@ -163,7 +165,7 @@ function ScholarshipCard({
 
       {/* Footer */}
       <div className="px-5 py-3.5 border-t border-[#f1f5f9] flex flex-col gap-2">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           {s.application_url ? (
             <a
               href={s.application_url}
@@ -201,12 +203,31 @@ function ScholarshipCard({
             {saving ? "…" : isSaved ? "Saved" : "Save"}
           </button>
 
-          {s.amount != null && (
-            <span className="ml-auto text-xs text-[#94a3b8]">
-              {typeof s.amount === "number" ? `Up to $${s.amount.toLocaleString()}` : s.amount}
-            </span>
+          {s.application_url && (
+            <button
+              onClick={() => report({ scholarshipId: s.id, scholarshipName: s.name, applicationUrl: s.application_url! })}
+              disabled={reporting || reported}
+              className="inline-flex items-center gap-1 text-xs font-medium text-[#94a3b8] hover:text-red-500 disabled:opacity-50 disabled:cursor-default transition-colors ml-auto"
+            >
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                <path d="M6 1v5M6 9v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.3"/>
+              </svg>
+              {reported ? "Reported" : reporting ? "Reporting…" : "Report bad link"}
+            </button>
           )}
         </div>
+
+        {reported && (
+          <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">
+            ✓ Thanks for reporting this! We'll review it soon.
+          </p>
+        )}
+        {reportError && (
+          <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">
+            ✗ {reportError}
+          </p>
+        )}
 
         {feedback && (
           feedback.msg === "session_expired" ? (
