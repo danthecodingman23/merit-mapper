@@ -182,6 +182,20 @@ function ScholarshipCard({
             <span className="text-xs text-[#94a3b8]">No application link available</span>
           )}
 
+          {s.application_url && (
+            <button
+              onClick={() => report({ scholarshipId: s.id, scholarshipName: s.name, applicationUrl: s.application_url! })}
+              disabled={reporting || reported}
+              className="inline-flex items-center gap-1 text-xs font-medium text-[#94a3b8] hover:text-red-500 disabled:opacity-50 disabled:cursor-default transition-colors"
+            >
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                <path d="M6 1v5M6 9v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.3"/>
+              </svg>
+              {reported ? "Reported" : reporting ? "Reporting…" : "Report bad link"}
+            </button>
+          )}
+
           <button
             onClick={handleSaveToggle}
             disabled={saving}
@@ -203,19 +217,6 @@ function ScholarshipCard({
             {saving ? "…" : isSaved ? "Saved" : "Save"}
           </button>
 
-          {s.application_url && (
-            <button
-              onClick={() => report({ scholarshipId: s.id, scholarshipName: s.name, applicationUrl: s.application_url! })}
-              disabled={reporting || reported}
-              className="inline-flex items-center gap-1 text-xs font-medium text-[#94a3b8] hover:text-red-500 disabled:opacity-50 disabled:cursor-default transition-colors ml-auto"
-            >
-              <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                <path d="M6 1v5M6 9v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.3"/>
-              </svg>
-              {reported ? "Reported" : reporting ? "Reporting…" : "Report bad link"}
-            </button>
-          )}
         </div>
 
         {reported && (
