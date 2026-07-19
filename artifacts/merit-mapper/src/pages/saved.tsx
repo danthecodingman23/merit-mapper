@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { useSavedScholarships } from "@/hooks/useSavedScholarships";
+import NavBar from "@/components/NavBar";
 
 function BookmarkIcon({ filled }: { filled?: boolean }) {
   return (
@@ -19,18 +20,11 @@ export default function Saved() {
   const { saved, loading, unsave } = useSavedScholarships();
 
   return (
-    <div className="min-h-screen bg-[#f8f7f4] py-10 px-4">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-[#f8f7f4]">
+      <NavBar />
+      <div className="max-w-2xl mx-auto py-10 px-4">
         <div className="mb-8">
-          <Link href="/">
-            <button className="text-sm font-medium text-[#2563eb] hover:text-[#1d4ed8] transition-colors flex items-center gap-1.5">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M11 7H3M3 7L7 3M3 7L7 11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              Home
-            </button>
-          </Link>
-          <h1 className="text-2xl font-bold text-[#1a1a2e] mt-4 mb-1">Saved Scholarships</h1>
+          <h1 className="text-2xl font-bold text-[#1a1a2e] mb-1">Saved Scholarships</h1>
           <p className="text-sm text-[#64748b]">
             {loading
               ? "Loading…"

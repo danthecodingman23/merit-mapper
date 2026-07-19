@@ -1,5 +1,6 @@
 import { useState, FormEvent } from "react";
 import { Link, useLocation } from "wouter";
+import NavBar from "@/components/NavBar";
 import { useMatch, type MatchResult, type RankedScholarship } from "@/context/MatchContext";
 import { useScholarships } from "@/hooks/useScholarships";
 import { useProfile, type ProfileData } from "@/hooks/useProfile";
@@ -95,7 +96,8 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f7f4] py-10 px-4">
+    <div className="min-h-screen bg-[#f8f7f4]">
+      <NavBar />
       {/* Full-page loading overlay */}
       {submitting && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#f8f7f4]/90 backdrop-blur-sm">
@@ -112,20 +114,7 @@ export default function Profile() {
         </div>
       )}
 
-      <div className="max-w-2xl mx-auto">
-        <div className="mb-8 flex items-center justify-between">
-          <Link href="/">
-            <button className="text-sm font-medium text-[#2563eb] hover:text-[#1d4ed8] transition-colors flex items-center gap-1.5">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M11 7H3M3 7L7 3M3 7L7 11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              Back to home
-            </button>
-          </Link>
-          {user && (
-            <p className="text-xs text-[#94a3b8]">{user.email}</p>
-          )}
-        </div>
+      <div className="max-w-2xl mx-auto py-10 px-4">
 
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-[#1a1a2e] mb-1">Your profile</h1>

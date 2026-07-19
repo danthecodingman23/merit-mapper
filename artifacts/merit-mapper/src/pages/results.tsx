@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useMatch, type RankedScholarship } from "@/context/MatchContext";
 import { useAuth } from "@/context/AuthContext";
 import { useSavedScholarships } from "@/hooks/useSavedScholarships";
+import NavBar from "@/components/NavBar";
 
 function scoreBadge(score: number) {
   if (score >= 80)
@@ -260,8 +261,9 @@ export default function Results() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8f7f4] py-10 px-4">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-[#f8f7f4]">
+      <NavBar />
+      <div className="max-w-2xl mx-auto py-10 px-4">
 
         {/* Session-expired banner */}
         {showExpiredBanner && (
@@ -284,37 +286,7 @@ export default function Results() {
         )}
 
         <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <Link href="/profile">
-              <button className="text-sm font-medium text-[#2563eb] hover:text-[#1d4ed8] transition-colors flex items-center gap-1.5">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M11 7H3M3 7L7 3M3 7L7 11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                Edit profile
-              </button>
-            </Link>
-            <div className="flex items-center gap-4">
-              {user && (
-                <Link href="/saved">
-                  <button className="text-sm font-medium text-[#475569] hover:text-[#1a1a2e] transition-colors flex items-center gap-1.5">
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                      <path d="M3 2h8a1 1 0 0 1 1 1v9l-5-3-5 3V3a1 1 0 0 1 1-1z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-                    </svg>
-                    Saved
-                  </button>
-                </Link>
-              )}
-              {user && (
-                <button
-                  onClick={handleSignOut}
-                  className="text-sm font-medium text-[#94a3b8] hover:text-[#475569] transition-colors"
-                >
-                  Sign out
-                </button>
-              )}
-            </div>
-          </div>
-          <h1 className="text-2xl font-bold text-[#1a1a2e] mt-4 mb-1">Your scholarship matches</h1>
+          <h1 className="text-2xl font-bold text-[#1a1a2e] mb-1">Your scholarship matches</h1>
           <p className="text-sm text-[#64748b]">
             {ranked.length === 0
               ? "No results yet — go back and submit your profile."
