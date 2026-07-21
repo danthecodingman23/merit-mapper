@@ -8,6 +8,10 @@ export default function Footer() {
       <Link href="/privacy">
         <span className="hover:text-[#475569] transition-colors cursor-pointer">Privacy Policy</span>
       </Link>
+      <span className="mx-2">·</span>
+      <Link href="/contact">
+        <span className="hover:text-[#475569] transition-colors cursor-pointer">Contact</span>
+      </Link>
     </footer>
   );
 }
