@@ -1,6 +1,7 @@
 import { useState, FormEvent } from "react";
 import { Link, useLocation } from "wouter";
 import NavBar from "@/components/NavBar";
+import Footer from "@/components/Footer";
 import { useMatch, type MatchResult, type RankedScholarship } from "@/context/MatchContext";
 import { useScholarships } from "@/hooks/useScholarships";
 import { useProfile, type ProfileData } from "@/hooks/useProfile";
@@ -292,6 +293,7 @@ export default function Profile() {
           </button>
         </form>
       </div>
+      <Footer />
     </div>
   );
 }

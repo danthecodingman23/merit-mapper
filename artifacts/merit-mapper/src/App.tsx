@@ -11,6 +11,7 @@ import Signup from "@/pages/signup";
 import Profile from "@/pages/profile";
 import Results from "@/pages/results";
 import Saved from "@/pages/saved";
+import Privacy from "@/pages/privacy";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -59,6 +60,7 @@ function Router() {
       <Route path="/saved">
         <ProtectedRoute component={Saved} />
       </Route>
+      <Route path="/privacy" component={Privacy} />
       <Route component={NotFound} />
     </Switch>
   );

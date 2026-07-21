@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { useAuth } from "@/context/AuthContext";
+import Footer from "@/components/Footer";
 
 export default function Landing() {
   const { user } = useAuth();
@@ -101,9 +102,7 @@ export default function Landing() {
         </div>
       </section>
 
-      <footer className="border-t border-[#e2e8f0] py-5 px-6 text-center text-xs text-[#94a3b8]">
-        &copy; {new Date().getFullYear()} MeritMapper. All rights reserved.
-      </footer>
+      <Footer />
     </div>
   );
 }

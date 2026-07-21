@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import Footer from "@/components/Footer";
 
 export default function Login() {
   const [, navigate] = useLocation();
@@ -134,6 +135,7 @@ export default function Login() {
           </p>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

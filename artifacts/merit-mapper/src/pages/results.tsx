@@ -6,6 +6,7 @@ import { useSavedScholarships } from "@/hooks/useSavedScholarships";
 import { useReportLink } from "@/hooks/useReportLink";
 import { useScholarshipFeedback, FEEDBACK_REASONS } from "@/hooks/useScholarshipFeedback";
 import NavBar from "@/components/NavBar";
+import Footer from "@/components/Footer";
 
 function scoreBadge(score: number) {
   if (score >= 80)
@@ -413,6 +414,7 @@ export default function Results() {
           </div>
         )}
       </div>
+      <Footer />
     </div>
   );
 }

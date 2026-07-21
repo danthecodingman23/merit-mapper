@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { useSavedScholarships } from "@/hooks/useSavedScholarships";
 import { useReportLink } from "@/hooks/useReportLink";
 import NavBar from "@/components/NavBar";
+import Footer from "@/components/Footer";
 
 function BookmarkIcon({ filled }: { filled?: boolean }) {
   return (
@@ -139,6 +140,7 @@ export default function Saved() {
           </div>
         )}
       </div>
+      <Footer />
     </div>
   );
 }
