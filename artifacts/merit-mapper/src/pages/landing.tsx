@@ -86,6 +86,62 @@ export default function Landing() {
         </div>
       </main>
 
+      <section className="py-16 px-6">
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-2xl font-bold text-[#1a1a2e] text-center mb-2">How It Works</h2>
+          <p className="text-sm text-[#64748b] text-center mb-10">Three steps to your best scholarship matches.</p>
+          <div className="grid sm:grid-cols-3 gap-6">
+            {[
+              {
+                step: "1",
+                title: "Build Your Profile",
+                desc: "Tell us about your background, interests, and goals so we can find the best fits for you.",
+                icon: (
+                  <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                    <circle cx="11" cy="7" r="4" stroke="#2563eb" strokeWidth="1.6"/>
+                    <path d="M3 19c0-4 3.6-7 8-7s8 3 8 7" stroke="#2563eb" strokeWidth="1.6" strokeLinecap="round"/>
+                  </svg>
+                ),
+              },
+              {
+                step: "2",
+                title: "Get Matched",
+                desc: "Our AI finds scholarships tailored specifically to you from our database of thousands.",
+                icon: (
+                  <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                    <path d="M11 3l2.5 5 5.5.8-4 3.9.95 5.5L11 15.5l-4.95 2.7.95-5.5L3 8.8l5.5-.8L11 3z" stroke="#2563eb" strokeWidth="1.6" strokeLinejoin="round"/>
+                  </svg>
+                ),
+              },
+              {
+                step: "3",
+                title: "Apply With Confidence",
+                desc: "See your best matches ranked with deadlines and apply directly with one click.",
+                icon: (
+                  <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                    <rect x="3" y="3" width="16" height="16" rx="3" stroke="#2563eb" strokeWidth="1.6"/>
+                    <path d="M7 11l3 3 5-5" stroke="#2563eb" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                ),
+              },
+            ].map(({ step, title, desc, icon }) => (
+              <div key={step} className="bg-white rounded-2xl border border-[#e2e8f0] px-6 py-6 flex flex-col gap-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-[#eff6ff] border border-[#bfdbfe] flex items-center justify-center flex-shrink-0">
+                    {icon}
+                  </div>
+                  <span className="text-xs font-bold text-[#2563eb] uppercase tracking-widest">Step {step}</span>
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#1a1a2e] mb-1">{title}</h3>
+                  <p className="text-sm text-[#64748b] leading-relaxed">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <Footer />
     </div>
   );
