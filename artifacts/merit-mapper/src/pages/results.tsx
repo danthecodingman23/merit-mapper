@@ -307,12 +307,32 @@ function ScholarshipCard({
   );
 }
 
+type SortKey = "score" | "amount" | "deadline";
+
+function sortScholarships(list: RankedScholarship[], key: SortKey): RankedScholarship[] {
+  return [...list].sort((a, b) => {
+    if (key === "amount") {
+      const aAmt = typeof a.amount === "number" ? a.amount : -1;
+      const bAmt = typeof b.amount === "number" ? b.amount : -1;
+      return bAmt - aAmt;
+    }
+    if (key === "deadline") {
+      const aD = a.deadline ? new Date(a.deadline).getTime() : Infinity;
+      const bD = b.deadline ? new Date(b.deadline).getTime() : Infinity;
+      return aD - bD;
+    }
+    // default: best match score
+    return b.result.match_score - a.result.match_score;
+  });
+}
+
 export default function Results() {
   const { ranked } = useMatch();
   const { user, signOut } = useAuth();
   const [, navigate] = useLocation();
   const { isSaved, save, unsave } = useSavedScholarships();
   const [showExpiredBanner, setShowExpiredBanner] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("score");
 
   const handleSave = async (s: RankedScholarship): Promise<{ error: string | null }> => {
     if (!user) {
@@ -391,6 +411,29 @@ export default function Results() {
           )}
         </div>
 
+        {ranked.length > 0 && (
+          <div className="mb-5 flex items-center gap-2">
+            <span className="text-xs font-medium text-[#94a3b8] mr-1">Sort by</span>
+            {([ 
+              { key: "score" as SortKey, label: "Best match" },
+              { key: "amount" as SortKey, label: "Highest amount" },
+              { key: "deadline" as SortKey, label: "Soonest deadline" },
+            ]).map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setSortKey(key)}
+                className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-all duration-150 ${
+                  sortKey === key
+                    ? "bg-[#2563eb] text-white border-[#2563eb] shadow-sm"
+                    : "bg-white text-[#475569] border-[#e2e8f0] hover:border-[#2563eb] hover:text-[#2563eb]"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {ranked.length === 0 ? (
           <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-sm p-10 text-center">
             <p className="text-[#64748b] mb-4">Submit your profile to see your matches here.</p>
@@ -402,7 +445,7 @@ export default function Results() {
           </div>
         ) : (
           <div className="space-y-4">
-            {ranked.map((s) => (
+            {sortScholarships(ranked, sortKey).map((s) => (
               <ScholarshipCard
                 key={s.id}
                 s={s}
