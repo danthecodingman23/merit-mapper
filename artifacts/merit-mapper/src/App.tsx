@@ -7,6 +7,7 @@ import { MatchProvider } from "@/context/MatchContext";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import Landing from "@/pages/landing";
 import Login from "@/pages/login";
+import ResetPassword from "@/pages/reset-password";
 import Signup from "@/pages/signup";
 import Profile from "@/pages/profile";
 import Results from "@/pages/results";
@@ -64,6 +65,7 @@ function Router() {
       </Route>
       <Route path="/privacy" component={Privacy} />
       <Route path="/contact" component={Contact} />
+      <Route path="/reset-password" component={ResetPassword} />
       <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>
