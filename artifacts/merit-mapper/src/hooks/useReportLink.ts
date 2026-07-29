@@ -34,14 +34,15 @@ export function useReportLink() {
 
       if (!r.ok) {
         const data = await r.json().catch(() => ({}));
+        const msg = data?.error ?? `HTTP ${r.status}`;
         console.error("[useReportLink] API error:", r.status, data);
-        setError("Couldn't submit report. Try again.");
+        setError(`Failed (${msg})`);
       } else {
         setReported(true);
       }
     } catch (err) {
       console.error("[useReportLink] Network error:", err);
-      setError("Couldn't submit report. Try again.");
+      setError("Network error — are you on the Vercel URL?");
     } finally {
       setReporting(false);
     }
