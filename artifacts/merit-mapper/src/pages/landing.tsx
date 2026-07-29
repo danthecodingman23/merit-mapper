@@ -83,7 +83,6 @@ export default function Landing() {
             </div>
           )}
 
-          <p className="mt-4 text-xs text-[#94a3b8]">Free to use. No credit card required.</p>
         </div>
       </main>
 
