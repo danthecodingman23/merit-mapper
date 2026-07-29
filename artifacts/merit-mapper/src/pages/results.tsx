@@ -38,7 +38,7 @@ function ScoreRing({ score }: { score: number }) {
   const r = 22;
   const circ = 2 * Math.PI * r;
   const dash = (score / 100) * circ;
-  const color = score >= 80 ? "#16a34a" : score >= 50 ? "#d97706" : "#94a3b8";
+  const color = score > 75 ? "#16a34a" : score >= 50 ? "#d97706" : "#dc2626";
   return (
     <div className="relative w-14 h-14 flex-shrink-0">
       <svg viewBox="0 0 56 56" className="w-full h-full -rotate-90">
