@@ -296,7 +296,7 @@ function ScholarshipCard({
 
         {reported && (
           <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">
-            ✓ Thanks for reporting this! We'll review it soon.
+            ✓ Thanks for reporting this link!
           </p>
         )}
         {reportError && (

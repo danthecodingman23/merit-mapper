@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
+
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 interface ReportArgs {
   scholarshipId: string;
@@ -19,19 +20,30 @@ export function useReportLink() {
     setReporting(true);
     setError(null);
 
-    const { error: insertError } = await supabase.from("reported_links").insert({
-      scholarship_id: scholarshipId,
-      scholarship_name: scholarshipName,
-      application_url: applicationUrl,
-      reported_at: new Date().toISOString(),
-      user_id: user?.id ?? null,
-    });
+    try {
+      const r = await fetch(`${BASE}/api/report-link`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scholarship_id: scholarshipId,
+          scholarship_name: scholarshipName,
+          application_url: applicationUrl,
+          user_id: user?.id ?? null,
+        }),
+      });
 
-    setReporting(false);
-    if (insertError) {
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        console.error("[useReportLink] API error:", r.status, data);
+        setError("Couldn't submit report. Try again.");
+      } else {
+        setReported(true);
+      }
+    } catch (err) {
+      console.error("[useReportLink] Network error:", err);
       setError("Couldn't submit report. Try again.");
-    } else {
-      setReported(true);
+    } finally {
+      setReporting(false);
     }
   };
 
