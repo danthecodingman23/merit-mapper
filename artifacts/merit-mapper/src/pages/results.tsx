@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import confetti from "canvas-confetti";
 import { Link, useLocation } from "wouter";
 import { useMatch, type RankedScholarship } from "@/context/MatchContext";
 import { useAuth } from "@/context/AuthContext";
@@ -354,6 +355,20 @@ export default function Results() {
   const { isSaved, save, unsave } = useSavedScholarships();
   const [showExpiredBanner, setShowExpiredBanner] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("score");
+
+  useEffect(() => {
+    if (ranked.length === 0) return;
+    if (sessionStorage.getItem("confetti_played")) return;
+    sessionStorage.setItem("confetti_played", "1");
+
+    const end = Date.now() + 3000;
+    const colors = ["#2563eb", "#16a34a", "#d97706", "#e2e8f0"];
+    (function frame() {
+      confetti({ particleCount: 6, angle: 60, spread: 55, origin: { x: 0 }, colors });
+      confetti({ particleCount: 6, angle: 120, spread: 55, origin: { x: 1 }, colors });
+      if (Date.now() < end) requestAnimationFrame(frame);
+    })();
+  }, [ranked.length]);
 
   const handleSave = async (s: RankedScholarship): Promise<{ error: string | null }> => {
     if (!user) {
