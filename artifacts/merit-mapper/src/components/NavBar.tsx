@@ -36,8 +36,14 @@ export default function NavBar() {
       <div className="max-w-2xl mx-auto h-14 flex items-center justify-between">
         {/* Brand */}
         <Link href="/">
-          <span className="text-[#1a1a2e] font-bold text-base tracking-tight cursor-pointer select-none">
-            Merit<span className="text-[#2563eb]">Mapper</span>
+          <span className="flex items-center gap-2 cursor-pointer select-none">
+            <div className="w-7 h-7 rounded-md bg-[#2563eb] flex items-center justify-center">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M8 2L14 5.5V10.5L8 14L2 10.5V5.5L8 2Z" fill="white" fillOpacity="0.9" />
+                <circle cx="8" cy="8" r="2" fill="white" />
+              </svg>
+            </div>
+            <span className="font-semibold text-[#1a1a2e] tracking-tight text-[15px]">MeritMapper</span>
           </span>
         </Link>
 
