@@ -87,21 +87,6 @@ export default function Landing() {
         </div>
       </main>
 
-      <section className="pb-20 pt-8 px-6">
-        <div className="max-w-3xl mx-auto grid grid-cols-3 gap-6 text-center">
-          {[
-            { stat: "50,000+", label: "Scholarships indexed" },
-            { stat: "$2.8B", label: "In available funding" },
-            { stat: "3 min", label: "To your first matches" },
-          ].map(({ stat, label }) => (
-            <div key={label} className="bg-white rounded-2xl border border-[#e2e8f0] px-6 py-5">
-              <div className="text-2xl font-bold text-[#1a1a2e] mb-1">{stat}</div>
-              <div className="text-sm text-[#64748b]">{label}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
       <Footer />
     </div>
   );
