@@ -97,7 +97,7 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f7f4]">
+    <div className="min-h-screen bg-gradient-to-b from-[#e8f0fe] to-white">
       <NavBar />
       {/* Full-page loading overlay */}
       {submitting && (

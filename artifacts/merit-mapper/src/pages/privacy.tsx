@@ -3,7 +3,7 @@ import Footer from "@/components/Footer";
 
 export default function Privacy() {
   return (
-    <div className="min-h-screen flex flex-col bg-[#f8f7f4]">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#e8f0fe] to-white">
       <header className="px-6 py-5 border-b border-[#e2e8f0] bg-white">
         <div className="max-w-3xl mx-auto flex items-center gap-2">
           <Link href="/">

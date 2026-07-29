@@ -58,7 +58,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#f8f7f4]">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#e8f0fe] to-white">
       <header className="px-6 py-5 flex items-center justify-between max-w-6xl mx-auto w-full">
         <Link href="/">
           <div className="flex items-center gap-2 cursor-pointer">

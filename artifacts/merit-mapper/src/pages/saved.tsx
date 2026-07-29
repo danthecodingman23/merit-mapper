@@ -100,7 +100,7 @@ export default function Saved() {
   const { saved, loading, unsave } = useSavedScholarships();
 
   return (
-    <div className="min-h-screen bg-[#f8f7f4]">
+    <div className="min-h-screen bg-gradient-to-b from-[#e8f0fe] to-white">
       <NavBar />
       <div className="max-w-2xl mx-auto py-10 px-4">
         <div className="mb-8">
