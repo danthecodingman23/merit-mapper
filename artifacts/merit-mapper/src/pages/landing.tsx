@@ -6,7 +6,7 @@ export default function Landing() {
   const { user } = useAuth();
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#f8f7f4]">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#e8f0fe] to-white">
       <header className="px-6 py-5 flex items-center justify-between max-w-6xl mx-auto w-full">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-md bg-[#2563eb] flex items-center justify-center">
