@@ -22,6 +22,17 @@ const URGENCY: Record<string, { chip: string; label: string }> = {
   low: { chip: "bg-green-50 text-green-700 border-green-200", label: "Plenty of time" },
 };
 
+function deadlineCountdown(deadline: string | null | undefined): { days: number; color: string } | null {
+  if (!deadline) return null;
+  const ms = new Date(deadline).getTime() - Date.now();
+  const days = Math.ceil(ms / (1000 * 60 * 60 * 24));
+  if (days < 0) return null;
+  const color = days <= 7 ? "text-red-600 bg-red-50 border-red-200"
+    : days <= 30 ? "text-amber-600 bg-amber-50 border-amber-200"
+    : "text-green-700 bg-green-50 border-green-200";
+  return { days, color };
+}
+
 function ScoreRing({ score }: { score: number }) {
   const r = 22;
   const circ = 2 * Math.PI * r;
@@ -123,17 +134,27 @@ function ScholarshipCard({
           </div>
         )}
         {s.deadline && (
-          <div className="flex items-center gap-1.5 text-sm">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <rect x="1" y="2" width="12" height="11" rx="2" stroke="#64748b" strokeWidth="1.4"/>
-              <path d="M1 6h12M4 1v2M10 1v2" stroke="#64748b" strokeWidth="1.4" strokeLinecap="round"/>
-            </svg>
-            <span className="text-[#475569]">
-              {new Date(s.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-            </span>
-            {s.result.deadline_urgency !== "high" && (
-              <span className={`text-xs px-1.5 py-0.5 rounded-full border ${urgency.chip}`}>{urgency.label}</span>
-            )}
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1.5 text-sm">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <rect x="1" y="2" width="12" height="11" rx="2" stroke="#64748b" strokeWidth="1.4"/>
+                <path d="M1 6h12M4 1v2M10 1v2" stroke="#64748b" strokeWidth="1.4" strokeLinecap="round"/>
+              </svg>
+              <span className="text-[#475569]">
+                {new Date(s.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              </span>
+              {s.result.deadline_urgency !== "high" && (
+                <span className={`text-xs px-1.5 py-0.5 rounded-full border ${urgency.chip}`}>{urgency.label}</span>
+              )}
+            </div>
+            {(() => {
+              const cd = deadlineCountdown(s.deadline);
+              return cd ? (
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full border w-fit ${cd.color}`}>
+                  Applications close in {cd.days} day{cd.days !== 1 ? "s" : ""}
+                </span>
+              ) : null;
+            })()}
           </div>
         )}
         {Array.isArray(s.category_tags) && s.category_tags.length > 0 && (
