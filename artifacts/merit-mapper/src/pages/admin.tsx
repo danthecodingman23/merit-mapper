@@ -276,21 +276,27 @@ export default function Admin() {
   const [checking, setChecking] = useState(false);
   const [wrong, setWrong] = useState(false);
 
+  const [errMsg, setErrMsg] = useState<string | null>(null);
+
   const verify = async () => {
     setChecking(true);
     setWrong(false);
+    setErrMsg(null);
     try {
       const r = await fetch(`${BASE}/api/admin/feedback`, {
-        headers: { "x-admin-password": input },
+        headers: { "x-admin-password": input.trim() },
       });
-      if (r.ok || r.status !== 401) {
-        sessionStorage.setItem("admin_pw", input);
-        setPw(input);
+      if (r.status === 503) {
+        const d = await r.json().catch(() => ({}));
+        setErrMsg(d?.error ?? "Server misconfigured — check Vercel env vars.");
+      } else if (r.ok || r.status !== 401) {
+        sessionStorage.setItem("admin_pw", input.trim());
+        setPw(input.trim());
       } else {
         setWrong(true);
       }
     } catch {
-      setWrong(true);
+      setErrMsg("Could not reach the server. Make sure you're on the Vercel deployment.");
     }
     setChecking(false);
   };
@@ -318,6 +324,7 @@ export default function Admin() {
             onKeyDown={(e) => e.key === "Enter" && verify()}
           />
           {wrong && <p className="text-xs text-red-600 mb-3">Incorrect password.</p>}
+          {errMsg && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">{errMsg}</p>}
           <button
             className="w-full bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-semibold py-2.5 rounded-xl text-sm transition-all disabled:opacity-50"
             disabled={checking || !input}
