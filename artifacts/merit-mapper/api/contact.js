@@ -6,7 +6,8 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-    return res.status(503).json({ error: "Server misconfigured" });
+    console.error("[contact] Missing env vars — SUPABASE_URL:", !!SUPABASE_URL, "SERVICE_KEY:", !!SUPABASE_SERVICE_KEY);
+    return res.status(503).json({ error: "Server misconfigured — missing Supabase credentials." });
   }
 
   const { name, email, message } = req.body ?? {};
@@ -14,7 +15,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "name, email, and message are required" });
   }
 
-  // 1. Save to Supabase
+  // ── 1. Save to Supabase (service role key — bypasses RLS) ──────────────────
   const dbRes = await fetch(`${SUPABASE_URL}/rest/v1/contact_submissions`, {
     method: "POST",
     headers: {
@@ -33,12 +34,18 @@ export default async function handler(req, res) {
 
   if (!dbRes.ok) {
     const err = await dbRes.json().catch(() => ({}));
-    console.error("[contact] Supabase insert error:", err);
-    return res.status(500).json({ error: "Failed to save submission. Please try again." });
+    console.error("[contact] Supabase insert failed — status:", dbRes.status, "error:", JSON.stringify(err));
+    return res.status(500).json({
+      error: `Database error (${dbRes.status}): ${err?.message ?? err?.code ?? "unknown"}`,
+    });
   }
 
-  // 2. Send email via Resend (non-blocking — don't fail the whole request if email fails)
-  if (RESEND_API_KEY) {
+  console.log("[contact] Saved to contact_submissions ✓");
+
+  // ── 2. Send email via Resend (best-effort — never blocks the response) ─────
+  if (!RESEND_API_KEY) {
+    console.warn("[contact] RESEND_API_KEY not set — skipping email notification");
+  } else {
     try {
       const emailRes = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -56,7 +63,6 @@ export default async function handler(req, res) {
                 <h1 style="color: white; margin: 0; font-size: 18px;">New Contact Form Submission</h1>
                 <p style="color: rgba(255,255,255,0.8); margin: 4px 0 0; font-size: 14px;">MeritMapper</p>
               </div>
-
               <table style="width: 100%; border-collapse: collapse;">
                 <tr>
                   <td style="padding: 12px 0; border-bottom: 1px solid #e2e8f0; width: 100px;">
@@ -83,10 +89,9 @@ export default async function handler(req, res) {
                   </td>
                 </tr>
               </table>
-
               <div style="margin-top: 24px; padding: 12px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
                 <p style="font-size: 13px; color: #64748b; margin: 0;">
-                  Submitted at ${new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })} UTC
+                  Submitted ${new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })} UTC
                   · Reply directly to <a href="mailto:${email.trim()}" style="color: #2563eb;">${email.trim()}</a>
                 </p>
               </div>
@@ -97,14 +102,13 @@ export default async function handler(req, res) {
 
       if (!emailRes.ok) {
         const err = await emailRes.json().catch(() => ({}));
-        console.error("[contact] Resend error:", err);
-        // Don't fail — submission is already saved
+        console.error("[contact] Resend failed — status:", emailRes.status, "error:", JSON.stringify(err));
+      } else {
+        console.log("[contact] Email sent via Resend ✓");
       }
     } catch (e) {
-      console.error("[contact] Email send failed:", e.message);
+      console.error("[contact] Email send threw:", e.message);
     }
-  } else {
-    console.warn("[contact] RESEND_API_KEY not set — email notification skipped");
   }
 
   return res.status(200).json({ ok: true });
