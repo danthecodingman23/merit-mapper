@@ -1,7 +1,8 @@
 import { useState, FormEvent } from "react";
 import { Link } from "wouter";
-import { supabase } from "@/lib/supabase";
 import Footer from "@/components/Footer";
+
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export default function Contact() {
   const [name, setName] = useState("");
@@ -17,18 +18,22 @@ export default function Contact() {
     setSubmitting(true);
     setError(null);
 
-    const { error: insertError } = await supabase.from("contact_submissions").insert({
-      name: name.trim(),
-      email: email.trim(),
-      message: message.trim(),
-      submitted_at: new Date().toISOString(),
-    });
-
-    setSubmitting(false);
-    if (insertError) {
-      setError("Something went wrong. Please try again.");
-    } else {
-      setSubmitted(true);
+    try {
+      const r = await fetch(`${BASE}/api/contact`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), message: message.trim() }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setError(data?.error ?? "Something went wrong. Please try again.");
+      } else {
+        setSubmitted(true);
+      }
+    } catch {
+      setError("Network error — please check your connection and try again.");
+    } finally {
+      setSubmitting(false);
     }
   };
 

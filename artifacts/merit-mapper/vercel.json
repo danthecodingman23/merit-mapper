@@ -14,7 +14,8 @@
     "api/admin/update-scholarship.js": { "maxDuration": 10 },
     "api/admin/delete-scholarship.js": { "maxDuration": 10 },
     "api/admin/delete-user.js": { "maxDuration": 10 },
-    "api/report-link.js": { "maxDuration": 10 }
+    "api/report-link.js": { "maxDuration": 10 },
+    "api/contact.js": { "maxDuration": 10 }
   },
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
