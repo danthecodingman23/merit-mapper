@@ -58,7 +58,7 @@ export default function Landing() {
           </h1>
 
           <p className="text-lg text-[#64748b] mb-10 leading-relaxed max-w-md mx-auto">
-            MeritMapper matches students with college scholarships tailored to their background, interests, and goals.
+            MeritMapper matches students with college scholarships tailored to their background, interests, and goals using cutting-edge AI technology.
           </p>
 
           <Link href="/profile">
