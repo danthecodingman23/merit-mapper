@@ -60,6 +60,7 @@
       .updated { font-size: 14px; color: var(--muted); margin: 0 0 40px; }
       section { margin-bottom: 40px; }
       h2 { font-size: 18px; font-weight: 600; color: var(--ink); margin: 0 0 12px; }
+      h3 { font-size: 15px; font-weight: 600; color: var(--ink); margin: 24px 0 10px; }
       p { margin: 0 0 12px; }
       ul { color: var(--soft); padding-left: 20px; margin: 0 0 12px; }
       li { margin-bottom: 8px; }
@@ -99,7 +100,7 @@
     <main>
       <div class="wrap">
         <h1>Privacy Policy</h1>
-        <p class="updated">Last updated: August 7, 2026</p>
+        <p class="updated">Last updated: August 14, 2026</p>
 
         <section>
           <h2>1. Introduction</h2>
@@ -107,7 +108,7 @@
             MeritMapper ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard the personal information you provide when using our scholarship matching service.
           </p>
           <p class="strong-ink">
-            We do not sell your information, and we do not share it with scholarship providers, advertisers, or data brokers. MeritMapper is currently an alpha pilot — please read the deletion terms in section 6.
+            We do not sell your information, and we never share your name, email, academic profile, or financial need level with scholarship providers, advertisers, or data brokers. We do advertise MeritMapper to reach new students, and our advertising partner sets cookies to measure those campaigns — this is explained in section 5. MeritMapper is currently an alpha pilot — please read the deletion terms in section 6.
           </p>
         </section>
 
@@ -121,6 +122,9 @@
             <li><span class="strong-ink">Financial need level</span> — a self-reported category (for example, low, medium, or high) used to match you with need-based scholarships.</li>
           </ul>
           <p>We do not collect payment card numbers, bank account details, Social Security numbers, or specific income figures.</p>
+          <p>
+            Separately from the profile you fill in, our advertising partner automatically collects limited technical information when you visit the site — your IP address, device and browser type, the pages you view on MeritMapper, and which ad or link brought you here. This is collected through cookies and is used only to measure our advertising. It is described in section 5, and it is never combined with your academic profile.
+          </p>
         </section>
 
         <section>
@@ -132,7 +136,10 @@
             <li>Save your scholarship matches and bookmarks across sessions.</li>
             <li>Improve the accuracy of our matching algorithm based on user feedback.</li>
           </ul>
-          <p class="strong-ink">We do not use your information for advertising, marketing campaigns, or any purpose outside of scholarship matching.</p>
+          <p class="strong-ink">We do not use your name, email, academic profile, or financial need level for advertising or ad targeting, and we do not share any of it with advertisers.</p>
+          <p>
+            We do advertise MeritMapper to reach students who may benefit from it. To understand which of our own campaigns are working, we measure how many people arrive from a given ad using the cookie and device information described in section 5. That measurement never draws on the profile you fill in.
+          </p>
         </section>
 
         <section>
@@ -143,23 +150,34 @@
         </section>
 
         <section>
-          <h2>5. Data Sharing</h2>
+          <h2>5. Data Sharing, Cookies, and Advertising</h2>
           <p>
-            We do not sell, rent, or share your personal information with third parties for commercial purposes. Your data is never sold to advertisers, data brokers, or scholarship providers.
+            We do not sell or rent your personal information. Your name, email, academic profile, and financial need level are never sold or disclosed to advertisers, data brokers, or scholarship providers.
           </p>
           <p>To operate the service, we rely on the following subprocessors:</p>
           <ul>
             <li><span class="strong-ink">Supabase</span> — database hosting; stores your account and profile information.</li>
             <li><span class="strong-ink">Vercel</span> — application hosting and the serverless functions that power the app.</li>
             <li><span class="strong-ink">Anthropic</span> — your academic profile is sent to the Claude API to generate scholarship matches. Per Anthropic's commercial terms, data submitted through the API is not used to train their models. Anthropic's handling is governed by their own <a href="https://www.anthropic.com/legal/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</li>
+            <li><span class="strong-ink">Google</span> — we advertise MeritMapper through Google Ads. The Google tag on our site sets cookies and sends Google your IP address, device and browser information, and the pages you visit on MeritMapper, so we can measure which ads bring students to the service. We do not send Google your name, email, academic profile, or financial need level. Google's handling is governed by their own <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</li>
           </ul>
-          <p>We do not currently use any third-party analytics, advertising, or tracking services. If we add analytics in the future, we will update this policy and name the provider here.</p>
+
+          <h3>Advertising cookies</h3>
+          <p>
+            We run advertising campaigns to reach students who may benefit from MeritMapper. To understand which campaigns work, we use Google's conversion measurement tag, which stores cookies in your browser and reports to Google when you arrive at the site or create an account. This tells us how many students came from a given ad. It does not give Google, or anyone else, access to your scholarship profile.
+          </p>
+          <p>
+            You can opt out at any time — through <a href="https://adssettings.google.com" target="_blank" rel="noopener noreferrer">Google Ads Settings</a>, your browser's cookie controls, or Google's <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener noreferrer">opt-out browser add-on</a>. Blocking these cookies has no effect on your scholarship matches or any other part of MeritMapper.
+          </p>
+          <p>
+            Apart from this advertising measurement, we do not use third-party analytics or tracking services. If we add any, we will update this policy and name the provider here.
+          </p>
         </section>
 
         <section>
           <h2>6. Pilot Status and Data Deletion</h2>
           <p>
-            MeritMapper is currently an alpha pilot. We keep your profile only as long as needed to provide matches, and all pilot user profiles will be permanently deleted no later than <span class="strong-ink">August 31, 2027</span>, or within 12 months of the pilot closing, whichever comes first. You can request deletion at any time by emailing <a href="mailto:privacy@meritmapper.com">privacy@meritmapper.com</a>, and we'll confirm within 7 days. A parent or guardian may make this request on behalf of a student under 18. We do not sell your information, and we do not share it with scholarship providers, advertisers, or data brokers.
+            MeritMapper is currently an alpha pilot. We keep your profile only as long as needed to provide matches, and all pilot user profiles will be permanently deleted no later than <span class="strong-ink">August 31, 2027</span>, or within 12 months of the pilot closing, whichever comes first. You can request deletion at any time by emailing <a href="mailto:privacy@meritmapper.com">privacy@meritmapper.com</a>, and we'll confirm within 7 days. A parent or guardian may make this request on behalf of a student under 18. We do not sell your information, and we do not share your profile with scholarship providers, advertisers, or data brokers.
           </p>
         </section>
 
@@ -176,6 +194,9 @@
           <h2>8. Children's Privacy</h2>
           <p>
             MeritMapper is intended for students aged 13 and older. The service is not directed to children under 13, and we do not knowingly collect personal information from anyone under 13. If we learn that we have collected information from a child under 13, we will delete that account and its associated data promptly. A parent or guardian who believes their child under 13 has provided us information — or who wishes to request deletion of a student's profile — may contact us at <a href="mailto:privacy@meritmapper.com">privacy@meritmapper.com</a>.
+          </p>
+          <p>
+            Because many of our users are under 18, we use our advertising tools only to measure how many students our ads bring to MeritMapper. We do not use them to build ad-targeting profiles of our users, and we do not run personalized or remarketing campaigns aimed at minors.
           </p>
         </section>
 
