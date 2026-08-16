@@ -269,6 +269,183 @@ function UsersSection({ pw }: { pw: string }) {
   );
 }
 
+/* ── Acquisition funnel ── */
+type FunnelCounts = {
+  visitors: number;
+  signup_page: number;
+  signups: number;
+  matches: number;
+  results: number;
+  applies: number;
+};
+type FunnelResp = {
+  days: number | null;
+  totalEvents: number;
+  truncated: boolean;
+  overall: FunnelCounts;
+  bySource: (FunnelCounts & { source: string })[];
+  byCampaign: (FunnelCounts & { campaign: string })[];
+  authUsersTotal: number | null;
+};
+
+const FUNNEL_STEPS: { key: keyof FunnelCounts; label: string; note?: string }[] = [
+  { key: "visitors", label: "Visitors" },
+  { key: "signup_page", label: "Viewed signup" },
+  { key: "signups", label: "Signed up" },
+  { key: "matches", label: "Completed profile + searched", note: "one action in the app" },
+  { key: "results", label: "Viewed results" },
+  { key: "applies", label: "Clicked apply" },
+];
+
+function pct(n: number, d: number) {
+  if (!d) return "—";
+  return `${((n / d) * 100).toFixed(1)}%`;
+}
+
+function FunnelSection({ pw }: { pw: string }) {
+  const [days, setDays] = useState<number | null>(30);
+  const [data, setData] = useState<FunnelResp | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    setErr(null);
+    adminFetch(`/api/admin/funnel?days=${days ?? 0}`, pw)
+      .then(async (r) => {
+        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? `Error ${r.status}`);
+        return r.json();
+      })
+      .then(setData)
+      .catch((e) => setErr(e.message))
+      .finally(() => setLoading(false));
+  }, [pw, days]);
+
+  const top = data?.overall.visitors ?? 0;
+
+  return (
+    <Section title="Acquisition funnel">
+      <div className="flex items-center gap-2 mb-5">
+        {([7, 30, null] as const).map((d) => (
+          <button
+            key={String(d)}
+            onClick={() => setDays(d)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+              days === d
+                ? "bg-[#2563eb] text-white border-[#2563eb]"
+                : "bg-white text-[#64748b] border-[#e2e8f0] hover:border-[#cbd5e1]"
+            }`}
+          >
+            {d ? `Last ${d} days` : "All time"}
+          </button>
+        ))}
+      </div>
+
+      {loading && <p className="text-sm text-[#64748b]">Loading…</p>}
+      {err && <p className="text-sm text-red-600">{err}</p>}
+
+      {data && !loading && (
+        <>
+          {data.totalEvents === 0 ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 mb-6">
+              <p className="text-sm text-amber-800 font-medium">No events recorded yet.</p>
+              <p className="text-xs text-amber-700 mt-1">
+                Tracking only sees traffic from the moment it shipped — it cannot backfill earlier
+                visits. If this stays empty after a new visit, check that migration 003 has been run
+                and that SUPABASE_SERVICE_ROLE_KEY is set.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-[#e2e8f0] bg-white shadow-sm p-5 mb-6">
+              {FUNNEL_STEPS.map((step, i) => {
+                const n = data.overall[step.key];
+                const prev = i === 0 ? n : data.overall[FUNNEL_STEPS[i - 1].key];
+                return (
+                  <div key={step.key} className="mb-4 last:mb-0">
+                    <div className="flex items-baseline justify-between mb-1.5">
+                      <span className="text-sm font-medium text-[#1a1a2e]">
+                        {step.label}
+                        {step.note && (
+                          <span className="text-xs text-[#94a3b8] font-normal"> — {step.note}</span>
+                        )}
+                      </span>
+                      <span className="text-sm text-[#64748b] tabular-nums">
+                        <span className="font-semibold text-[#1a1a2e]">{n}</span>
+                        {i > 0 && <span className="ml-2 text-xs">{pct(n, prev)} of previous</span>}
+                      </span>
+                    </div>
+                    <div className="h-2.5 rounded-full bg-[#f1f5f9] overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-[#2563eb] transition-all"
+                        style={{ width: top ? `${Math.max((n / top) * 100, n > 0 ? 1.5 : 0)}%` : "0%" }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {data.authUsersTotal != null && (
+            <p className="text-xs text-[#64748b] mb-6">
+              Cross-check: <span className="font-semibold text-[#1a1a2e]">{data.authUsersTotal}</span>{" "}
+              real account{data.authUsersTotal === 1 ? "" : "s"} in Supabase auth for this window vs{" "}
+              <span className="font-semibold text-[#1a1a2e]">{data.overall.signups}</span> tracked
+              signup{data.overall.signups === 1 ? "" : "s"}. A gap means those users signed up before
+              tracking shipped, or with analytics blocked.
+            </p>
+          )}
+
+          {data.bySource.length > 0 && (
+            <>
+              <h3 className="text-sm font-bold text-[#1a1a2e] mb-3">By source</h3>
+              <div className="mb-6">
+                <Tbl heads={["Source", "Visitors", "Signups", "Visitor → signup", "Matches", "Applies"]}>
+                  {data.bySource.map((r) => (
+                    <tr key={r.source} className="border-b border-[#f1f5f9] last:border-0">
+                      <Td className="font-medium text-[#1a1a2e]">{r.source}</Td>
+                      <Td>{r.visitors}</Td>
+                      <Td>{r.signups}</Td>
+                      <Td className="font-semibold">{pct(r.signups, r.visitors)}</Td>
+                      <Td>{r.matches}</Td>
+                      <Td>{r.applies}</Td>
+                    </tr>
+                  ))}
+                </Tbl>
+              </div>
+            </>
+          )}
+
+          {data.byCampaign.length > 0 && (
+            <>
+              <h3 className="text-sm font-bold text-[#1a1a2e] mb-3">By campaign</h3>
+              <Tbl heads={["Campaign", "Visitors", "Signups", "Visitor → signup", "Matches", "Applies"]}>
+                {data.byCampaign.map((r) => (
+                  <tr key={r.campaign} className="border-b border-[#f1f5f9] last:border-0">
+                    <Td className="font-medium text-[#1a1a2e]">{r.campaign}</Td>
+                    <Td>{r.visitors}</Td>
+                    <Td>{r.signups}</Td>
+                    <Td className="font-semibold">{pct(r.signups, r.visitors)}</Td>
+                    <Td>{r.matches}</Td>
+                    <Td>{r.applies}</Td>
+                  </tr>
+                ))}
+              </Tbl>
+            </>
+          )}
+
+          {data.truncated && (
+            <p className="text-xs text-amber-700 mt-3">
+              Row cap reached — these numbers are undercounted. Time to aggregate in SQL rather than
+              in the API route.
+            </p>
+          )}
+        </>
+      )}
+    </Section>
+  );
+}
+
 /* ── Main admin page ── */
 export default function Admin() {
   const [input, setInput] = useState("");
@@ -358,6 +535,7 @@ export default function Admin() {
       </header>
 
       <main className="max-w-5xl mx-auto py-10 px-4">
+        <FunnelSection pw={pw} />
         <FeedbackSection pw={pw} />
         <ReportedLinksSection pw={pw} />
         <UsersSection pw={pw} />

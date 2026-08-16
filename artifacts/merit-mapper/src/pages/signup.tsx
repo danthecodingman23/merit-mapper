@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import Footer from "@/components/Footer";
+import { track, identify } from "@/lib/analytics";
+import { trackSignupConversion } from "@/lib/adsConversion";
 
 export default function Signup() {
   const [, navigate] = useLocation();
@@ -11,6 +13,10 @@ export default function Signup() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
+
+  useEffect(() => {
+    track("signup_started");
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +50,13 @@ export default function Signup() {
         setLoading(false);
         return;
       }
+
+      // The auth user exists in both branches below, whether or not email
+      // confirmation is still pending, so this is the one place that counts
+      // a signup exactly once.
+      identify(data.user.id);
+      track("signup_completed", { email_confirmation_required: !data.session });
+      trackSignupConversion();
 
       if (!data.session) {
         console.log("[signup] No session — email confirmation required");
