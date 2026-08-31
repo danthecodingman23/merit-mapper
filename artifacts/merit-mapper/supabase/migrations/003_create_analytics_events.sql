@@ -38,3 +38,18 @@ CREATE INDEX IF NOT EXISTS analytics_events_source_idx     ON analytics_events (
 -- read or write this table at all. Writes go through /api/track and reads
 -- through /api/admin/funnel, both using the service role key server-side.
 ALTER TABLE analytics_events ENABLE ROW LEVEL SECURITY;
+
+-- service_role bypasses RLS but NOT table grants -- it is an ordinary role
+-- with BYPASSRLS, not a superuser. Supabase's default privileges usually
+-- grant new public tables to it automatically; when they don't, every call
+-- fails with 42501 "permission denied for table analytics_events".
+--
+-- The sequence grant is required separately: id is BIGSERIAL, so each insert
+-- calls nextval() as the inserting role. Without it reads succeed and only
+-- writes fail, which is a confusing way to find out.
+GRANT SELECT, INSERT ON public.analytics_events TO service_role;
+GRANT USAGE, SELECT ON SEQUENCE public.analytics_events_id_seq TO service_role;
+
+-- Belt and braces: the browser-facing roles get nothing. RLS already blocks
+-- them, but this keeps the table shut even if a policy is added later.
+REVOKE ALL ON public.analytics_events FROM anon, authenticated;
