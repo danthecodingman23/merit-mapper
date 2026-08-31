@@ -8,6 +8,7 @@ import { useReportLink } from "@/hooks/useReportLink";
 import { useScholarshipFeedback, FEEDBACK_REASONS } from "@/hooks/useScholarshipFeedback";
 import NavBar from "@/components/NavBar";
 import Footer from "@/components/Footer";
+import { track } from "@/lib/analytics";
 
 function scoreBadge(score: number) {
   if (score >= 80)
@@ -210,6 +211,8 @@ function ScholarshipCard({
               href={s.application_url}
               target="_blank"
               rel="noopener noreferrer"
+              // keepalive in track() keeps this request alive as the new tab opens
+              onClick={() => track("apply_clicked", { scholarship_id: s.id, scholarship_name: s.name })}
               className="inline-flex items-center gap-1.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all duration-150 shadow-sm hover:shadow"
             >
               Apply now
@@ -355,6 +358,12 @@ export default function Results() {
   const { isSaved, save, unsave } = useSavedScholarships();
   const [showExpiredBanner, setShowExpiredBanner] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("score");
+
+  // Results live in in-memory context, so a reload lands here with an empty
+  // list. Only count a view when results are actually on screen.
+  useEffect(() => {
+    if (ranked.length > 0) track("results_viewed", { count: ranked.length });
+  }, [ranked.length]);
 
   useEffect(() => {
     if (ranked.length === 0) return;

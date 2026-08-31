@@ -6,6 +6,8 @@ import { useMatch, type MatchResult, type RankedScholarship } from "@/context/Ma
 import { useScholarships } from "@/hooks/useScholarships";
 import { useProfile, type ProfileData } from "@/hooks/useProfile";
 import { useAuth } from "@/context/AuthContext";
+import { track, identify } from "@/lib/analytics";
+import { trackMatchConversion } from "@/lib/adsConversion";
 
 const US_STATES = [
   "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut",
@@ -81,6 +83,13 @@ export default function Profile() {
       console.log(`[profile] Merged ${merged.length} ranked scholarships. Navigating to /results…`);
 
       await save(profile);
+
+      // Profile completion and search are the same action in this app: the
+      // form submit runs the match and persists the profile together.
+      if (user?.id) identify(user.id);
+      track("match_run", { results: merged.length, scholarships: scholarships.length });
+      trackMatchConversion();
+
       setRanked(merged);
       navigate("/results");
     } catch (err) {
@@ -90,6 +99,11 @@ export default function Profile() {
         setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
       }
       console.error("[profile] Error during matching:", err);
+      // Failed matches never reach save(), so these users leave no profile row
+      // behind. Without this event they would be invisible in the funnel.
+      track("match_failed", {
+        reason: err instanceof DOMException && err.name === "AbortError" ? "timeout" : "error",
+      });
     } finally {
       clearTimeout(timeout);
       setSubmitting(false);

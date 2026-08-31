@@ -16,6 +16,8 @@ import Privacy from "@/pages/privacy";
 import Contact from "@/pages/contact";
 import Admin from "@/pages/admin";
 import NotFound from "@/pages/not-found";
+import { initAttribution, track } from "@/lib/analytics";
+import { initAdsPixels } from "@/lib/adsConversion";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +50,21 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   return <Component />;
 }
 
+/**
+ * Fires a page_view on every client-side route change. wouter navigations
+ * never reload the document, so without this only the first page of a visit
+ * would ever be recorded.
+ */
+function PageViewTracker() {
+  const [location] = useLocation();
+
+  useEffect(() => {
+    track("page_view");
+  }, [location]);
+
+  return null;
+}
+
 function Router() {
   return (
     <Switch>
@@ -73,12 +90,20 @@ function Router() {
 }
 
 function App() {
+  // Capture attribution before anything can navigate away from the landing
+  // URL — the UTM params only exist on that first entry.
+  useEffect(() => {
+    initAttribution();
+    initAdsPixels();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
           <MatchProvider>
             <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <PageViewTracker />
               <Router />
             </WouterRouter>
           </MatchProvider>

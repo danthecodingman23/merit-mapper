@@ -8,14 +8,10 @@
     "api/scholarships/save.js": { "maxDuration": 10 },
     "api/scholarships/saved.js": { "maxDuration": 10 },
     "api/scholarships/unsave.js": { "maxDuration": 10 },
-    "api/admin/feedback.js": { "maxDuration": 10 },
-    "api/admin/reported-links.js": { "maxDuration": 10 },
-    "api/admin/users.js": { "maxDuration": 10 },
-    "api/admin/update-scholarship.js": { "maxDuration": 10 },
-    "api/admin/delete-scholarship.js": { "maxDuration": 10 },
-    "api/admin/delete-user.js": { "maxDuration": 10 },
+    "api/admin/*.js": { "maxDuration": 30 },
     "api/report-link.js": { "maxDuration": 10 },
-    "api/contact.js": { "maxDuration": 10 }
+    "api/contact.js": { "maxDuration": 10 },
+    "api/track.js": { "maxDuration": 10 }
   },
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
