@@ -71,7 +71,11 @@ This is a pnpm workspace monorepo with two deployment targets that share source:
 - `api/scholarships/{save,saved,unsave}.js` — saved-scholarship CRUD (mirrors `scholarships.ts`); Express-only, no Vercel-only logic diverges
 - `api/report-link.js` — report a broken scholarship link
 - `api/contact.js` — save contact message to Supabase + email via Resend
-- `api/admin/{users,delete-user,update-scholarship,delete-scholarship,feedback,reported-links}.js` — admin dashboard backend, all gated by `ADMIN_PASSWORD`
+- `api/track.js` — public funnel-event ingest, writes to `analytics_events` (event name allowlist, no auth)
+- `api/admin/[action].js` — **every** `/api/admin/*` route in one dynamic function: `users`, `delete-user`,
+  `update-scholarship`, `delete-scholarship`, `feedback`, `reported-links`, `funnel`. All gated by `ADMIN_PASSWORD`
+  in the single shared preamble. Add a new admin endpoint by adding a key to its `ROUTES` table — do **not**
+  create a new file, the Hobby plan caps a deployment at 12 Serverless Functions and we sit at 8.
 
 The `report-link`, `contact`, and `admin/*` functions are **Vercel-only** — there is no Express equivalent for them.
 
